@@ -1,0 +1,24 @@
+version: '3.8'
+name: terestria-prod
+
+services:
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-3000}:80"
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings_mobile
+      - DB_NAME=${DB_NAME:-terestria_admin}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=${DB_HOST:-geocircledb-1.cxegdhwflvmv.ap-southeast-1.rds.amazonaws.com}
+      - DB_PORT=5432
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@terestria.com}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin}
+    volumes:
+      - app_media:/app/media
+    restart: unless-stopped
+
+volumes:
+  app_media:
