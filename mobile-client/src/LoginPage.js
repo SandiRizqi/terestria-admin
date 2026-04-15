@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { useLogin, useNotify } from 'react-admin';
+import React, { useState, useEffect } from 'react';
+import { useLogin, useNotify, useAuthState, useRedirect } from 'react-admin';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import RoomIcon from '@material-ui/icons/Room';
+import Alert from '@material-ui/lab/Alert';
+import Collapse from '@material-ui/core/Collapse';
 import { makeStyles } from '@material-ui/core/styles';
 
 const useStyles = makeStyles({
@@ -133,16 +135,41 @@ const LoginPage = () => {
     const classes = useStyles();
     const login = useLogin();
     const notify = useNotify();
+    const redirect = useRedirect();
+    const { authenticated, loading: authLoading } = useAuthState();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Redirect to dashboard if already authenticated
+    useEffect(() => {
+        if (authenticated && !authLoading) {
+            redirect('/');
+        }
+    }, [authenticated, authLoading, redirect]);
+
+    // Show nothing while checking auth state
+    if (authLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f6faf6' }}>
+                <CircularProgress style={{ color: '#388e3c' }} />
+            </div>
+        );
+    }
+
+    // If authenticated, don't render login form (redirect will happen via useEffect)
+    if (authenticated) return null;
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setError('');
         setLoading(true);
         login({ username, password })
-            .catch(() => {
-                notify('Invalid username or password', 'error');
+            .catch((err) => {
+                const message = (err && err.message) || 'Invalid username or password';
+                setError(message);
+                notify(message, 'error');
             })
             .finally(() => setLoading(false));
     };
@@ -164,6 +191,15 @@ const LoginPage = () => {
                     <div className={classes.subtitle}>Sign in to the Mobile Admin panel</div>
 
                     <form onSubmit={handleSubmit}>
+                        <Collapse in={!!error}>
+                            <Alert
+                                severity="error"
+                                onClose={() => setError('')}
+                                style={{ marginBottom: 16, borderRadius: 10 }}
+                            >
+                                {error}
+                            </Alert>
+                        </Collapse>
                         <TextField
                             className={classes.textField}
                             label="Username"

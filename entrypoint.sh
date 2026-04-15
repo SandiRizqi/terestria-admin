@@ -15,6 +15,7 @@ done
 echo "==> Database is ready."
 
 echo "==> Running migrations..."
+python manage.py makemigrations --settings=backend.settings_mobile --noinput
 python manage.py migrate --settings=backend.settings_mobile --noinput
 
 echo "==> Collecting static files..."

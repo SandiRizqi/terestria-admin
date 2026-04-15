@@ -12,7 +12,7 @@ COPY mobile-client/public ./public
 COPY mobile-client/src ./src
 COPY mobile-client/.env ./.env
 
-ENV NODE_OPTIONS=--openssl-legacy-provider
+ENV NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
 RUN npx react-scripts build
 
 # ============================================================

@@ -35,6 +35,9 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     synced_at = models.DateTimeField(auto_now=True)
 
+    map_color = models.CharField(max_length=7, blank=True, default='',
+                                help_text="Hex color for map display (e.g. #ff0000)")
+
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
 
@@ -130,6 +133,22 @@ class GeoData(models.Model):
     synced_at = models.DateTimeField(auto_now=True)
 
     is_deleted = models.BooleanField(default=False)
+
+    APPROVAL_CHOICES = [
+        ('draft', 'Draft'),
+        ('review', 'In Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    approval_status = models.CharField(
+        max_length=20, choices=APPROVAL_CHOICES, default='draft', db_index=True
+    )
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mobile_reviewed_geodata'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(blank=True, default='')
 
     geom = gis_models.GeometryField(srid=4326, null=True, blank=True)
     geom_3857 = gis_models.GeometryField(srid=3857, null=True, blank=True)
@@ -441,6 +460,114 @@ class AdminSettings(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class GeoDataComment(models.Model):
+    """Comments/annotations on GeoData features."""
+    geodata = models.ForeignKey(
+        GeoData, on_delete=models.CASCADE, related_name='comments'
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mobile_geodata_comments'
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'mobileadmin_geodata_comments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        username = self.user.username if self.user else 'Unknown'
+        return f"Comment by {username} on GeoData #{self.geodata_id}"
+
+
+class Task(models.Model):
+    """Tasks for field data management workflow."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    assigned_to = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mobile_assigned_tasks'
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mobile_created_tasks'
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='tasks'
+    )
+    geodata = models.ForeignKey(
+        GeoData, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='tasks'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    due_date = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'mobileadmin_tasks'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'priority']),
+            models.Index(fields=['assigned_to', 'status']),
+            models.Index(fields=['project', 'status']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class AuditLog(models.Model):
+    """Tracks all data changes across the admin panel."""
+    ACTION_CHOICES = [
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+        ('status_change', 'Status Change'),
+    ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mobile_audit_logs'
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, db_index=True)
+    model_name = models.CharField(max_length=100, db_index=True)
+    object_id = models.CharField(max_length=100, db_index=True)
+    object_repr = models.CharField(max_length=255, default='')
+    changes = JSONField(null=True, blank=True, help_text="Dict of {field: {old, new}}")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'mobileadmin_audit_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['model_name', 'object_id']),
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['action', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.action} {self.model_name} #{self.object_id} by {self.user}"
 
 
 class MobileNotification(models.Model):

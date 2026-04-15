@@ -3,17 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "ra-data-django-rest-framework": "^0.2.1",
-    "react": "^16.14.0",
-    "react-dom": "^16.14.0",
-    "react-admin": "^3.19.0",
-    "react-scripts": "3.4.0",
     "@material-ui/core": "^4.12.0",
     "@material-ui/icons": "^4.11.0",
+    "@material-ui/lab": "^4.0.0-alpha.61",
+    "@turf/turf": "^6.5.0",
     "leaflet": "^1.7.1",
-    "react-leaflet": "^2.8.0",
     "maplibre-gl": "^2.4.0",
-    "prop-types": "^15.7.2"
+    "prop-types": "^15.7.2",
+    "ra-data-django-rest-framework": "^0.2.1",
+    "react": "^16.14.0",
+    "react-admin": "^3.19.0",
+    "react-dom": "^16.14.0",
+    "react-leaflet": "^2.8.0",
+    "react-scripts": "3.4.0",
+    "recharts": "1.8.6"
   },
   "scripts": {
     "start": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts start",

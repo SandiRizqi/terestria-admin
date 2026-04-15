@@ -7,10 +7,19 @@ import InputLabel from '@material-ui/core/InputLabel';
 import Select from '@material-ui/core/Select';
 import MenuItem from '@material-ui/core/MenuItem';
 import Typography from '@material-ui/core/Typography';
+import IconButton from '@material-ui/core/IconButton';
+import Tooltip from '@material-ui/core/Tooltip';
 import RoomIcon from '@material-ui/icons/Room';
+import LayersIcon from '@material-ui/icons/Layers';
+import SearchIcon from '@material-ui/icons/Search';
+import EditIcon from '@material-ui/icons/Edit';
 import { makeStyles } from '@material-ui/core/styles';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import * as turf from '@turf/turf';
+import LayerControlPanel from './LayerControlPanel';
+import RadiusSearchControl from './RadiusSearchControl';
+import DrawControl from './DrawControl';
 
 const useStyles = makeStyles({
     root: {
@@ -130,6 +139,19 @@ const useStyles = makeStyles({
         fontSize: 13,
         alignSelf: 'center',
     },
+    toolbarButtons: {
+        display: 'flex',
+        gap: 4,
+        marginLeft: 'auto',
+    },
+    toolButton: {
+        backgroundColor: '#ffffff',
+        border: '1px solid #e0ece0',
+        borderRadius: 8,
+        '&:hover': {
+            backgroundColor: '#e8f5e9',
+        },
+    },
 });
 
 const MapView = () => {
@@ -140,6 +162,12 @@ const MapView = () => {
     const [selectedProject, setSelectedProject] = useState('');
     const [selectedGroup, setSelectedGroup] = useState('');
     const [selectedFeature, setSelectedFeature] = useState(null);
+    const [showLayers, setShowLayers] = useState(false);
+    const [showRadiusSearch, setShowRadiusSearch] = useState(false);
+    const [showDraw, setShowDraw] = useState(false);
+    const [layers, setLayers] = useState({ points: true, lines: true, polygons: true });
+    const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+    const [polygonOpacity, setPolygonOpacity] = useState(0.25);
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
 
@@ -180,6 +208,7 @@ const MapView = () => {
             geometry_type: props.geometry_type,
             formData,
         });
+        setShowRadiusSearch(false);
     }, []);
 
     // Build the tile URL param based on selection
@@ -219,6 +248,7 @@ const MapView = () => {
                 },
                 layers: [
                     { id: 'osm', type: 'raster', source: 'osm' },
+                    // Polygon fill
                     {
                         id: 'geodata-polygon',
                         type: 'fill',
@@ -230,6 +260,7 @@ const MapView = () => {
                             'fill-opacity': 0.25,
                         },
                     },
+                    // Polygon outline
                     {
                         id: 'geodata-polygon-outline',
                         type: 'line',
@@ -241,6 +272,7 @@ const MapView = () => {
                             'line-width': 2,
                         },
                     },
+                    // Lines
                     {
                         id: 'geodata-line',
                         type: 'line',
@@ -252,6 +284,7 @@ const MapView = () => {
                             'line-width': 3,
                         },
                     },
+                    // Points
                     {
                         id: 'geodata-point',
                         type: 'circle',
@@ -263,6 +296,40 @@ const MapView = () => {
                             'circle-color': '#e53935',
                             'circle-stroke-width': 2,
                             'circle-stroke-color': '#ffffff',
+                        },
+                    },
+                    // Heatmap layer (hidden by default)
+                    {
+                        id: 'geodata-heatmap',
+                        type: 'heatmap',
+                        source: 'geodata',
+                        'source-layer': 'geodata',
+                        filter: ['==', '$type', 'Point'],
+                        layout: {
+                            visibility: 'none',
+                        },
+                        paint: {
+                            'heatmap-weight': 1,
+                            'heatmap-intensity': [
+                                'interpolate', ['linear'], ['zoom'],
+                                0, 1,
+                                18, 3,
+                            ],
+                            'heatmap-color': [
+                                'interpolate', ['linear'], ['heatmap-density'],
+                                0, 'rgba(33,102,172,0)',
+                                0.2, 'rgb(103,169,207)',
+                                0.4, 'rgb(209,229,240)',
+                                0.6, 'rgb(253,219,199)',
+                                0.8, 'rgb(239,138,98)',
+                                1, 'rgb(178,24,43)',
+                            ],
+                            'heatmap-radius': [
+                                'interpolate', ['linear'], ['zoom'],
+                                0, 2,
+                                18, 30,
+                            ],
+                            'heatmap-opacity': 0.8,
                         },
                     },
                 ],
@@ -313,6 +380,84 @@ const MapView = () => {
         }
     }, [tileParam]);
 
+    // Layer toggle handler
+    const handleLayerToggle = useCallback((layerType) => {
+        setLayers((prev) => {
+            const newState = { ...prev, [layerType]: !prev[layerType] };
+            const map = mapRef.current;
+            if (!map) return newState;
+
+            const visibility = newState[layerType] ? 'visible' : 'none';
+
+            if (layerType === 'points') {
+                if (map.getLayer('geodata-point')) map.setLayoutProperty('geodata-point', 'visibility', visibility);
+            } else if (layerType === 'lines') {
+                if (map.getLayer('geodata-line')) map.setLayoutProperty('geodata-line', 'visibility', visibility);
+            } else if (layerType === 'polygons') {
+                if (map.getLayer('geodata-polygon')) map.setLayoutProperty('geodata-polygon', 'visibility', visibility);
+                if (map.getLayer('geodata-polygon-outline')) map.setLayoutProperty('geodata-polygon-outline', 'visibility', visibility);
+            }
+
+            return newState;
+        });
+    }, []);
+
+    // Heatmap toggle handler
+    const handleHeatmapToggle = useCallback(() => {
+        setHeatmapEnabled((prev) => {
+            const newVal = !prev;
+            const map = mapRef.current;
+            if (!map) return newVal;
+
+            if (map.getLayer('geodata-heatmap')) {
+                map.setLayoutProperty('geodata-heatmap', 'visibility', newVal ? 'visible' : 'none');
+            }
+            // When heatmap is on, optionally hide points so they don't overlap
+            if (map.getLayer('geodata-point')) {
+                map.setLayoutProperty('geodata-point', 'visibility', newVal ? 'none' : (layers.points ? 'visible' : 'none'));
+            }
+
+            return newVal;
+        });
+    }, [layers.points]);
+
+    // Polygon opacity handler
+    const handleOpacityChange = useCallback((val) => {
+        setPolygonOpacity(val);
+        const map = mapRef.current;
+        if (map && map.getLayer('geodata-polygon')) {
+            map.setPaintProperty('geodata-polygon', 'fill-opacity', val);
+        }
+    }, []);
+
+    // Handle feature select from radius search results
+    const handleRadiusFeatureSelect = useCallback((feature) => {
+        if (feature && feature.geometry) {
+            const coords = feature.geometry.coordinates;
+            const map = mapRef.current;
+            if (map) {
+                if (feature.geometry.type === 'Point') {
+                    map.flyTo({ center: coords, zoom: 16 });
+                } else {
+                    // For lines/polygons, get centroid
+                    try {
+                        const centroid = turf.centroid(feature);
+                        map.flyTo({ center: centroid.geometry.coordinates, zoom: 16 });
+                    } catch (e) {
+                        // Fallback for multi-coordinates
+                        const flat = coords.flat(Infinity);
+                        if (flat.length >= 2) {
+                            map.flyTo({ center: [flat[0], flat[1]], zoom: 16 });
+                        }
+                    }
+                }
+            }
+        }
+        if (feature && feature.properties) {
+            handleFeatureClick(feature);
+        }
+    }, [handleFeatureClick]);
+
     const handleProjectChange = (e) => {
         setSelectedProject(e.target.value);
         setSelectedGroup('');
@@ -362,17 +507,89 @@ const MapView = () => {
                         ))}
                     </Select>
                 </FormControl>
+
                 {hasSelection && (
-                    <Typography variant="body2" style={{ color: '#6b8f6b' }}>
-                        Click on features to view details and edit
-                    </Typography>
+                    <div className={classes.toolbarButtons}>
+                        <Tooltip title="Layer Controls">
+                            <IconButton
+                                className={classes.toolButton}
+                                size="small"
+                                onClick={() => { setShowLayers(!showLayers); setShowRadiusSearch(false); }}
+                                style={showLayers ? { backgroundColor: '#e8f5e9', borderColor: '#388e3c' } : {}}
+                            >
+                                <LayersIcon style={{ color: '#388e3c', fontSize: 20 }} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Radius Search">
+                            <IconButton
+                                className={classes.toolButton}
+                                size="small"
+                                onClick={() => { setShowRadiusSearch(!showRadiusSearch); setShowLayers(false); setSelectedFeature(null); }}
+                                style={showRadiusSearch ? { backgroundColor: '#fff3e0', borderColor: '#e65100' } : {}}
+                            >
+                                <SearchIcon style={{ color: '#e65100', fontSize: 20 }} />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Draw Geometry">
+                            <IconButton
+                                className={classes.toolButton}
+                                size="small"
+                                onClick={() => { setShowDraw(!showDraw); setShowLayers(false); setShowRadiusSearch(false); }}
+                                style={showDraw ? { backgroundColor: '#e3f2fd', borderColor: '#1565c0' } : {}}
+                            >
+                                <EditIcon style={{ color: '#1565c0', fontSize: 20 }} />
+                            </IconButton>
+                        </Tooltip>
+                    </div>
                 )}
             </div>
             <div className={classes.mapContainer}>
                 {hasSelection ? (
                     <>
                         <div ref={mapContainerRef} className={classes.map} />
-                        {selectedFeature && (
+
+                        {/* Layer Control Panel */}
+                        <LayerControlPanel
+                            map={mapRef.current}
+                            visible={showLayers}
+                            onClose={() => setShowLayers(false)}
+                            layers={layers}
+                            onToggle={handleLayerToggle}
+                            heatmapEnabled={heatmapEnabled}
+                            onHeatmapToggle={handleHeatmapToggle}
+                            opacity={polygonOpacity}
+                            onOpacityChange={handleOpacityChange}
+                        />
+
+                        {/* Radius Search Control */}
+                        <RadiusSearchControl
+                            map={mapRef.current}
+                            visible={showRadiusSearch}
+                            onClose={() => setShowRadiusSearch(false)}
+                            onFeatureSelect={handleRadiusFeatureSelect}
+                        />
+
+                        {/* Draw Control */}
+                        <DrawControl
+                            map={mapRef.current}
+                            visible={showDraw}
+                            onClose={() => setShowDraw(false)}
+                            projects={projects}
+                            onSave={() => {
+                                // Reload tiles by recreating the source
+                                const map = mapRef.current;
+                                if (map && map.getSource('geodata')) {
+                                    const source = map.getSource('geodata');
+                                    const tiles = source._options && source._options.tiles;
+                                    if (tiles) {
+                                        source.setTiles(tiles.map((t) => t + '&_t=' + Date.now()));
+                                    }
+                                }
+                            }}
+                        />
+
+                        {/* Feature Detail Panel */}
+                        {selectedFeature && !showRadiusSearch && (
                             <div className={classes.detailPanel}>
                                 <div className={classes.detailHeader}>
                                     <span className={classes.detailTitle}>

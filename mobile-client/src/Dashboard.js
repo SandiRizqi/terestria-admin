@@ -12,6 +12,13 @@ import DevicesIcon from '@material-ui/icons/Devices';
 import PeopleIcon from '@material-ui/icons/People';
 import { makeStyles } from '@material-ui/core/styles';
 
+import DataTrendsChart from './dashboard/DataTrendsChart';
+import ProjectBarChart from './dashboard/ProjectBarChart';
+import GeometryDistributionChart from './dashboard/GeometryDistributionChart';
+import CollectorPieChart from './dashboard/CollectorPieChart';
+import SyncActivityChart from './dashboard/SyncActivityChart';
+import ActivityFeed from './components/ActivityFeed';
+
 const useStyles = makeStyles({
     root: {
         padding: 24,
@@ -69,6 +76,18 @@ const useStyles = makeStyles({
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
     },
+    sectionTitle: {
+        fontWeight: 700,
+        color: '#1b5e20',
+        fontSize: 20,
+        marginTop: 32,
+        marginBottom: 16,
+    },
+    activityCard: {
+        borderRadius: 12,
+        border: '1px solid #e0ece0',
+        padding: '16px 20px',
+    },
 });
 
 const StatCard = ({ title, value, icon: Icon, color, bgColor }) => {
@@ -97,6 +116,7 @@ const Dashboard = () => {
         fcmTokens: 0,
         users: 0,
     });
+    const [analytics, setAnalytics] = useState(null);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -124,6 +144,18 @@ const Dashboard = () => {
         fetchStats();
     }, [dataProvider]);
 
+    // Fetch analytics data
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        fetch('/api/mobile/analytics/dashboard/', {
+            headers: { Authorization: 'Token ' + token, 'Content-Type': 'application/json' },
+        })
+            .then((r) => r.json())
+            .then((data) => setAnalytics(data))
+            .catch((e) => console.error('Analytics error:', e));
+    }, []);
+
     return (
         <div className={classes.root}>
             <div className={classes.header}>
@@ -134,6 +166,8 @@ const Dashboard = () => {
                     Mobile GIS data collection management dashboard
                 </Typography>
             </div>
+
+            {/* Stat Cards */}
             <Grid container spacing={3}>
                 <Grid item xs={12} sm={6} md={4} lg={2}>
                     <StatCard title="Projects" value={stats.projects} icon={FolderIcon}
@@ -160,6 +194,36 @@ const Dashboard = () => {
                         color="#2e7d32" bgColor="#e8f5e9" />
                 </Grid>
             </Grid>
+
+            {/* Charts Section */}
+            {analytics && (
+                <>
+                    <Typography className={classes.sectionTitle}>Analytics</Typography>
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={8}>
+                            <DataTrendsChart data={analytics.geodata_by_date} />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <GeometryDistributionChart data={analytics.geodata_by_geometry} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <ProjectBarChart data={analytics.geodata_by_project} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <CollectorPieChart data={analytics.geodata_by_collector} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <SyncActivityChart data={analytics.sync_activity} />
+                        </Grid>
+                    </Grid>
+
+                    {/* Activity Feed */}
+                    <Typography className={classes.sectionTitle}>Recent Activity</Typography>
+                    <Card className={classes.activityCard}>
+                        <ActivityFeed items={analytics.recent_activity} maxItems={15} />
+                    </Card>
+                </>
+            )}
         </div>
     );
 };

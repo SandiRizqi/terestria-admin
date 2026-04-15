@@ -5,8 +5,9 @@ from .views import (
     SyncLogViewSet, MobileAppVersionViewSet, FCMTokenViewSet,
     TMSLayerViewSet, MobileNotificationViewSet,
     UserManagementViewSet, GroupViewSet, PermissionViewSet,
-    AdminSettingsViewSet,
-    vector_tile, tile_proxy,
+    AdminSettingsViewSet, AuditLogViewSet,
+    GeoDataCommentViewSet, TaskViewSet,
+    vector_tile, tile_proxy, me, dashboard_analytics, spatial_query,
 )
 
 router = DefaultRouter()
@@ -22,9 +23,15 @@ router.register('users', UserManagementViewSet, basename='user')
 router.register('groups', GroupViewSet, basename='group')
 router.register('permissions', PermissionViewSet, basename='permission')
 router.register('admin-settings', AdminSettingsViewSet, basename='admin-settings')
+router.register('geodata-comments', GeoDataCommentViewSet, basename='geodata-comment')
+router.register('tasks', TaskViewSet, basename='task')
+router.register('audit-logs', AuditLogViewSet, basename='audit-log')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('me/', me, name='me'),
+    path('analytics/dashboard/', dashboard_analytics, name='dashboard-analytics'),
+    path('spatial-query/', spatial_query, name='spatial-query'),
     path('tiles/<int:z>/<int:x>/<int:y>.pbf', vector_tile, name='vector-tile'),
     path('proxy', tile_proxy, name='tile-proxy'),
 ]

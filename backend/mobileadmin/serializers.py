@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from .models import (
     Project, ProjectGroup, GeoData, SyncLog,
     MobileAppVersion, FCMToken, TMSLayer, MobileNotification,
-    AdminSettings,
+    AdminSettings, AuditLog, GeoDataComment, Task,
 )
 
 
@@ -136,7 +136,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'mobile_id', 'name', 'description', 'geometry_type',
             'form_fields', 'created_by', 'created_by_username', 'collectors',
-            'created_at', 'updated_at', 'synced_at',
+            'map_color', 'created_at', 'updated_at', 'synced_at',
             'is_active', 'is_deleted', 'geodata_count',
         ]
         read_only_fields = ['created_at', 'updated_at', 'synced_at']
@@ -163,7 +163,9 @@ class ProjectGroupSerializer(serializers.ModelSerializer):
 class GeoDataSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source='project.name', read_only=True, default=None)
     collected_by_username = serializers.CharField(source='collected_by.username', read_only=True, default=None)
+    reviewed_by_username = serializers.CharField(source='reviewed_by.username', read_only=True, default=None)
     geom_geojson = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = GeoData
@@ -171,10 +173,15 @@ class GeoDataSerializer(serializers.ModelSerializer):
             'id', 'mobile_id', 'project', 'project_name',
             'form_data', 'points',
             'collected_by', 'collected_by_username',
+            'approval_status', 'reviewed_by', 'reviewed_by_username',
+            'reviewed_at', 'review_notes',
             'created_at', 'updated_at', 'synced_at',
-            'is_deleted', 'geom_geojson',
+            'is_deleted', 'geom_geojson', 'comment_count',
         ]
-        read_only_fields = ['synced_at', 'geom_geojson']
+        read_only_fields = ['synced_at', 'geom_geojson', 'comment_count']
+
+    def get_comment_count(self, obj):
+        return obj.comments.count()
 
     def get_geom_geojson(self, obj):
         if obj.geom:
@@ -256,3 +263,43 @@ class MobileNotificationSerializer(serializers.ModelSerializer):
 
     def get_receiver_count(self, obj):
         return obj.receivers.count()
+
+
+class GeoDataCommentSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True, default=None)
+
+    class Meta:
+        model = GeoDataComment
+        fields = ['id', 'geodata', 'user', 'user_username', 'text', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    assigned_to_username = serializers.CharField(source='assigned_to.username', read_only=True, default=None)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True, default=None)
+    project_name = serializers.CharField(source='project.name', read_only=True, default=None)
+
+    class Meta:
+        model = Task
+        fields = [
+            'id', 'title', 'description',
+            'assigned_to', 'assigned_to_username',
+            'created_by', 'created_by_username',
+            'project', 'project_name', 'geodata',
+            'status', 'priority', 'due_date',
+            'completed_at', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True, default=None)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'user', 'user_username', 'action',
+            'model_name', 'object_id', 'object_repr',
+            'changes', 'ip_address', 'created_at',
+        ]
+        read_only_fields = fields

@@ -6,7 +6,7 @@ import FolderIcon from '@material-ui/icons/Folder';
 import FolderSpecialIcon from '@material-ui/icons/FolderSpecial';
 import RoomIcon from '@material-ui/icons/Room';
 import SyncIcon from '@material-ui/icons/Sync';
-import PhoneAndroidIcon from '@material-ui/icons/PhoneAndroid';
+
 import DevicesIcon from '@material-ui/icons/Devices';
 import LayersIcon from '@material-ui/icons/Layers';
 import NotificationsIcon from '@material-ui/icons/Notifications';
@@ -14,6 +14,8 @@ import MapIcon from '@material-ui/icons/Map';
 import PeopleIcon from '@material-ui/icons/People';
 import GroupIcon from '@material-ui/icons/Group';
 import SettingsIcon from '@material-ui/icons/Settings';
+import HistoryIcon from '@material-ui/icons/History';
+import AssignmentIcon from '@material-ui/icons/Assignment';
 import Divider from '@material-ui/core/Divider';
 
 const useMenuStyles = makeStyles({
@@ -77,11 +79,12 @@ const CustomMenu = ({ onMenuClick, dense }) => {
             <MenuItemLink to="/project-groups" primaryText="Project Groups" leftIcon={<FolderSpecialIcon />} onClick={onMenuClick} dense={dense} />
             <MenuItemLink to="/geodata" primaryText="GeoData" leftIcon={<RoomIcon />} onClick={onMenuClick} dense={dense} />
             <MenuItemLink to="/map" primaryText="Map View" leftIcon={<MapIcon />} onClick={onMenuClick} dense={dense} />
+            <MenuItemLink to="/tasks" primaryText="Tasks" leftIcon={<AssignmentIcon />} onClick={onMenuClick} dense={dense} />
 
             <Divider className={classes.divider} />
             <div className={classes.sectionLabel}>Mobile</div>
             <MenuItemLink to="/sync-logs" primaryText="Sync Logs" leftIcon={<SyncIcon />} onClick={onMenuClick} dense={dense} />
-            <MenuItemLink to="/app-versions" primaryText="App Versions" leftIcon={<PhoneAndroidIcon />} onClick={onMenuClick} dense={dense} />
+
             <MenuItemLink to="/fcm-tokens" primaryText="FCM Tokens" leftIcon={<DevicesIcon />} onClick={onMenuClick} dense={dense} />
             <MenuItemLink to="/notifications" primaryText="Notifications" leftIcon={<NotificationsIcon />} onClick={onMenuClick} dense={dense} />
 
@@ -89,6 +92,10 @@ const CustomMenu = ({ onMenuClick, dense }) => {
             <div className={classes.sectionLabel}>Authorization</div>
             <MenuItemLink to="/users" primaryText="Users" leftIcon={<PeopleIcon />} onClick={onMenuClick} dense={dense} />
             <MenuItemLink to="/groups" primaryText="Groups" leftIcon={<GroupIcon />} onClick={onMenuClick} dense={dense} />
+
+            <Divider className={classes.divider} />
+            <div className={classes.sectionLabel}>Monitoring</div>
+            <MenuItemLink to="/audit-logs" primaryText="Audit Logs" leftIcon={<HistoryIcon />} onClick={onMenuClick} dense={dense} />
 
             <Divider className={classes.divider} />
             <div className={classes.sectionLabel}>Configuration</div>

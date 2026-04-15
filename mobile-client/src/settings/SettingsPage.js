@@ -156,6 +156,10 @@ const SettingsPage = () => {
                 data,
             });
             notify('Settings saved successfully');
+            // Dispatch event so the App component can rebuild the theme immediately
+            window.dispatchEvent(
+                new CustomEvent('terestria-settings-updated', { detail: settings })
+            );
         } catch (e) {
             notify('Failed to save settings', 'error');
         } finally {
