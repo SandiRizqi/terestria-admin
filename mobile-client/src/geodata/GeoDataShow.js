@@ -1,9 +1,10 @@
 import React from 'react';
 import {
-    Show, SimpleShowLayout, TextField, DateField, BooleanField,
+    Show, SimpleShowLayout, TextField, DateField, BooleanField, TopToolbar,
 } from 'react-admin';
 import JsonField from '../components/JsonField';
 import MapField from '../components/MapField';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 import ApprovalActions from './ApprovalActions';
 import CommentSection from './CommentSection';
 
@@ -27,7 +28,7 @@ const GeoDataShowLayout = ({ record, ...props }) => (
 );
 
 const GeoDataShow = (props) => (
-    <Show {...props}>
+    <Show {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/geodata" /></TopToolbar>}>
         <GeoDataShowLayout />
     </Show>
 );

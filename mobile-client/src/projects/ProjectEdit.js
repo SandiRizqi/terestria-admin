@@ -1,12 +1,13 @@
 import React from 'react';
 import {
     Edit, SimpleForm, TextInput, SelectInput,
-    BooleanInput, ReferenceArrayInput, SelectArrayInput,
+    BooleanInput, ReferenceArrayInput, SelectArrayInput, TopToolbar,
 } from 'react-admin';
 import JsonInput from '../components/JsonInput';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const ProjectEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/projects" /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="mobile_id" label="Mobile ID" disabled />
             <TextInput source="name" />
@@ -21,7 +22,6 @@ const ProjectEdit = (props) => (
                 <SelectArrayInput optionText="username" />
             </ReferenceArrayInput>
             <BooleanInput source="is_active" />
-            <BooleanInput source="is_deleted" />
         </SimpleForm>
     </Edit>
 );

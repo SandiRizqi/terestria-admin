@@ -1,11 +1,12 @@
 import React from 'react';
 import {
     Edit, SimpleForm, TextInput,
-    ReferenceArrayInput, SelectArrayInput,
+    ReferenceArrayInput, SelectArrayInput, TopToolbar,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const GroupEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/groups" /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="name" />
             <ReferenceArrayInput

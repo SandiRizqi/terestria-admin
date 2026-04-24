@@ -1,10 +1,11 @@
 import React from 'react';
 import {
-    Edit, SimpleForm, TextInput, NumberInput, BooleanInput,
+    Edit, SimpleForm, TextInput, NumberInput, BooleanInput, TopToolbar,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const TMSLayerEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/tms-layers" /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="name" />
             <TextInput source="code" label="Code" />

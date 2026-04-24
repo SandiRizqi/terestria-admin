@@ -1,12 +1,13 @@
 import React from 'react';
 import {
     Edit, SimpleForm, TextInput,
-    BooleanInput, ReferenceArrayInput, SelectArrayInput,
+    BooleanInput, ReferenceArrayInput, SelectArrayInput, TopToolbar,
 } from 'react-admin';
 import JsonInput from '../components/JsonInput';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const ProjectGroupEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/project-groups" /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="name" />
             <TextInput source="description" multiline rows={3} fullWidth />

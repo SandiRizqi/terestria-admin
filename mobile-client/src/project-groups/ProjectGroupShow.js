@@ -1,12 +1,13 @@
 import React from 'react';
 import {
     Show, SimpleShowLayout, TextField, BooleanField,
-    DateField, NumberField,
+    DateField, NumberField, TopToolbar,
 } from 'react-admin';
 import JsonField from '../components/JsonField';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const ProjectGroupShow = (props) => (
-    <Show {...props}>
+    <Show {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/project-groups" /></TopToolbar>}>
         <SimpleShowLayout>
             <TextField source="id" />
             <TextField source="name" />

@@ -1,11 +1,12 @@
 import React from 'react';
 import {
     Edit, SimpleForm, TextInput, BooleanInput,
-    ReferenceArrayInput, SelectArrayInput,
+    ReferenceArrayInput, SelectArrayInput, TopToolbar,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const UserEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/users" /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="username" />
             <TextInput source="email" type="email" />
