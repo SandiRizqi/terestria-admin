@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useDataProvider, useNotify, Title } from 'react-admin';
+import { useDataProvider, useNotify, Title, usePermissions } from 'react-admin';
+import AccessDenied from '../components/AccessDenied';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
@@ -116,6 +117,7 @@ const SettingsPage = () => {
     const classes = useStyles();
     const dataProvider = useDataProvider();
     const notify = useNotify();
+    const { permissions } = usePermissions();
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -166,6 +168,10 @@ const SettingsPage = () => {
             setSaving(false);
         }
     };
+
+    if (permissions && !permissions.is_staff && !permissions.is_superuser) {
+        return <AccessDenied />;
+    }
 
     if (loading) {
         return (

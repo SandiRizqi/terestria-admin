@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    Show, SimpleShowLayout, TextField, DateField, BooleanField, TopToolbar,
+    Show, SimpleShowLayout, TextField, DateField, BooleanField, TopToolbar, EditButton,
 } from 'react-admin';
 import JsonField from '../components/JsonField';
 import MapField from '../components/MapField';
@@ -28,7 +28,7 @@ const GeoDataShowLayout = ({ record, ...props }) => (
 );
 
 const GeoDataShow = (props) => (
-    <Show {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/geodata" /></TopToolbar>}>
+    <Show {...props} actions={<TopToolbar><EditButton /><DeleteWithConfirmButton /></TopToolbar>}>
         <GeoDataShowLayout />
     </Show>
 );

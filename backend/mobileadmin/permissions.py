@@ -93,3 +93,17 @@ def filter_geodata_for_user(qs, user):
         | Q(project__collectors=user)
         | Q(collected_by=user)
     ).distinct()
+
+
+class IsStaffOrSuperuser(BasePermission):
+    """Only staff and superusers can access this resource."""
+    def has_permission(self, request, view):
+        return bool(request.user and (request.user.is_staff or request.user.is_superuser))
+
+
+class IsStaffOrReadOnly(BasePermission):
+    """Read operations for any authenticated user; write operations require staff."""
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return bool(request.user and request.user.is_authenticated)
+        return bool(request.user and (request.user.is_staff or request.user.is_superuser))

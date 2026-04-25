@@ -2,7 +2,7 @@ import React from 'react';
 import {
     List, Datagrid, TextField, DateField, BooleanField,
     Filter, TextInput, ReferenceInput, SelectInput, DateInput,
-    TopToolbar, CreateButton,
+    TopToolbar, CreateButton, EditButton,
 } from 'react-admin';
 import Chip from '@material-ui/core/Chip';
 import ExportButton from './ExportButton';
@@ -64,6 +64,7 @@ const GeoDataList = (props) => (
             <ApprovalStatusField source="approval_status" />
             <BooleanField source="is_deleted" />
             <DateField source="created_at" showTime />
+            <EditButton />
         </Datagrid>
     </List>
 );

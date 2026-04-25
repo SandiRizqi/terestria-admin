@@ -1,14 +1,14 @@
 import React from 'react';
 import {
     Show, SimpleShowLayout, TextField, BooleanField,
-    DateField, NumberField, TopToolbar,
+    DateField, NumberField, TopToolbar, EditButton,
 } from 'react-admin';
 import JsonField from '../components/JsonField';
 import GeometryTypeField from '../components/GeometryTypeField';
 import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const ProjectShow = (props) => (
-    <Show {...props} actions={<TopToolbar><DeleteWithConfirmButton basePath="/projects" /></TopToolbar>}>
+    <Show {...props} actions={<TopToolbar><EditButton /><DeleteWithConfirmButton /></TopToolbar>}>
         <SimpleShowLayout>
             <TextField source="id" />
             <TextField source="mobile_id" label="Mobile ID" />

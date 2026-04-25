@@ -3,6 +3,7 @@ import {
     List, Datagrid, TextField, BooleanField, DateField,
     Filter, SelectInput, BooleanInput,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const FCMTokenFilter = (props) => (
     <Filter {...props}>
@@ -27,6 +28,7 @@ const FCMTokenList = (props) => (
             <BooleanField source="is_active" />
             <DateField source="last_used_at" label="Last Used" showTime />
             <DateField source="updated_at" showTime />
+            <DeleteWithConfirmButton hardDelete resource="fcm-tokens" />
         </Datagrid>
     </List>
 );

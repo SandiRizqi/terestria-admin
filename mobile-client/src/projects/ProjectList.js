@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     List, Datagrid, TextField, BooleanField, DateField,
-    NumberField, Filter, TextInput, SelectInput, BooleanInput,
+    NumberField, Filter, TextInput, SelectInput, BooleanInput, EditButton,
 } from 'react-admin';
 import GeometryTypeField from '../components/GeometryTypeField';
 import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
@@ -29,6 +29,7 @@ const ProjectList = (props) => (
             <TextField source="created_by_username" label="Created By" />
             <BooleanField source="is_active" />
             <DateField source="created_at" showTime />
+            <EditButton />
             <DeleteWithConfirmButton />
         </Datagrid>
     </List>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout as RALayout, MenuItemLink, AppBar } from 'react-admin';
+import { Layout as RALayout, MenuItemLink, AppBar, usePermissions } from 'react-admin';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import FolderIcon from '@material-ui/icons/Folder';
@@ -62,6 +62,9 @@ const useMenuStyles = makeStyles({
 
 const CustomMenu = ({ onMenuClick, dense }) => {
     const classes = useMenuStyles();
+    const { permissions } = usePermissions();
+    const isStaff = permissions && (permissions.is_staff || permissions.is_superuser);
+
     return (
         <div className={classes.menu}>
             <div className={classes.logo}>
@@ -84,23 +87,30 @@ const CustomMenu = ({ onMenuClick, dense }) => {
             <Divider className={classes.divider} />
             <div className={classes.sectionLabel}>Mobile</div>
             <MenuItemLink to="/sync-logs" primaryText="Sync Logs" leftIcon={<SyncIcon />} onClick={onMenuClick} dense={dense} />
+            {isStaff && <MenuItemLink to="/fcm-tokens" primaryText="FCM Tokens" leftIcon={<DevicesIcon />} onClick={onMenuClick} dense={dense} />}
+            {isStaff && <MenuItemLink to="/notifications" primaryText="Notifications" leftIcon={<NotificationsIcon />} onClick={onMenuClick} dense={dense} />}
 
-            <MenuItemLink to="/fcm-tokens" primaryText="FCM Tokens" leftIcon={<DevicesIcon />} onClick={onMenuClick} dense={dense} />
-            <MenuItemLink to="/notifications" primaryText="Notifications" leftIcon={<NotificationsIcon />} onClick={onMenuClick} dense={dense} />
-
-            <Divider className={classes.divider} />
-            <div className={classes.sectionLabel}>Authorization</div>
-            <MenuItemLink to="/users" primaryText="Users" leftIcon={<PeopleIcon />} onClick={onMenuClick} dense={dense} />
-            <MenuItemLink to="/groups" primaryText="Groups" leftIcon={<GroupIcon />} onClick={onMenuClick} dense={dense} />
+            {isStaff && (
+                <>
+                    <Divider className={classes.divider} />
+                    <div className={classes.sectionLabel}>Authorization</div>
+                    <MenuItemLink to="/users" primaryText="Users" leftIcon={<PeopleIcon />} onClick={onMenuClick} dense={dense} />
+                    <MenuItemLink to="/groups" primaryText="Groups" leftIcon={<GroupIcon />} onClick={onMenuClick} dense={dense} />
+                </>
+            )}
 
             <Divider className={classes.divider} />
             <div className={classes.sectionLabel}>Monitoring</div>
             <MenuItemLink to="/audit-logs" primaryText="Audit Logs" leftIcon={<HistoryIcon />} onClick={onMenuClick} dense={dense} />
 
-            <Divider className={classes.divider} />
-            <div className={classes.sectionLabel}>Configuration</div>
-            <MenuItemLink to="/tms-layers" primaryText="TMS Layers" leftIcon={<LayersIcon />} onClick={onMenuClick} dense={dense} />
-            <MenuItemLink to="/settings" primaryText="Settings" leftIcon={<SettingsIcon />} onClick={onMenuClick} dense={dense} />
+            {isStaff && (
+                <>
+                    <Divider className={classes.divider} />
+                    <div className={classes.sectionLabel}>Configuration</div>
+                    <MenuItemLink to="/tms-layers" primaryText="TMS Layers" leftIcon={<LayersIcon />} onClick={onMenuClick} dense={dense} />
+                    <MenuItemLink to="/settings" primaryText="Settings" leftIcon={<SettingsIcon />} onClick={onMenuClick} dense={dense} />
+                </>
+            )}
         </div>
     );
 };

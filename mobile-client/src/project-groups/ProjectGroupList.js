@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     List, Datagrid, TextField, BooleanField, DateField,
-    NumberField, Filter, TextInput, BooleanInput,
+    NumberField, Filter, TextInput, BooleanInput, EditButton,
 } from 'react-admin';
 import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 import BulkActions from './BulkActions';
@@ -22,6 +22,7 @@ const ProjectGroupList = (props) => (
             <TextField source="created_by_username" label="Created By" />
             <BooleanField source="is_active" />
             <DateField source="created_at" showTime />
+            <EditButton />
             <DeleteWithConfirmButton />
         </Datagrid>
     </List>

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     List, Datagrid, TextField, DateField,
-    Filter, TextInput, SelectInput, ReferenceInput,
+    Filter, TextInput, SelectInput, ReferenceInput, usePermissions,
 } from 'react-admin';
 import Chip from '@material-ui/core/Chip';
 
@@ -25,26 +25,33 @@ const ActionField = ({ record }) => {
 };
 ActionField.defaultProps = { label: 'Action' };
 
-const AuditLogFilter = (props) => (
-    <Filter {...props}>
-        <TextInput label="Search" source="search" alwaysOn />
-        <ReferenceInput source="user" reference="users" label="User" alwaysOn>
-            <SelectInput optionText="username" />
-        </ReferenceInput>
-        <SelectInput source="action" choices={[
-            { id: 'create', name: 'Create' },
-            { id: 'update', name: 'Update' },
-            { id: 'delete', name: 'Delete' },
-            { id: 'status_change', name: 'Status Change' },
-        ]} />
-        <SelectInput source="model_name" choices={[
-            { id: 'Project', name: 'Project' },
-            { id: 'ProjectGroup', name: 'Project Group' },
-            { id: 'GeoData', name: 'GeoData' },
-            { id: 'Task', name: 'Task' },
-        ]} />
-    </Filter>
-);
+const AuditLogFilter = (props) => {
+    const { permissions } = usePermissions();
+    const isStaff = permissions && (permissions.is_staff || permissions.is_superuser);
+
+    return (
+        <Filter {...props}>
+            <TextInput label="Search" source="search" alwaysOn />
+            {isStaff && (
+                <ReferenceInput source="user" reference="users" label="User" alwaysOn>
+                    <SelectInput optionText="username" />
+                </ReferenceInput>
+            )}
+            <SelectInput source="action" choices={[
+                { id: 'create', name: 'Create' },
+                { id: 'update', name: 'Update' },
+                { id: 'delete', name: 'Delete' },
+                { id: 'status_change', name: 'Status Change' },
+            ]} />
+            <SelectInput source="model_name" choices={[
+                { id: 'Project', name: 'Project' },
+                { id: 'ProjectGroup', name: 'Project Group' },
+                { id: 'GeoData', name: 'GeoData' },
+                { id: 'Task', name: 'Task' },
+            ]} />
+        </Filter>
+    );
+};
 
 const AuditLogList = (props) => (
     <List

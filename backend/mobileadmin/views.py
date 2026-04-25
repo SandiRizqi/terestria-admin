@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from django.contrib.auth.models import User, Group, Permission
@@ -36,6 +36,7 @@ from .filters import (
 from .audit import AuditMixin
 from .permissions import (
     IsProjectMember, IsProjectGroupMember, IsGeoDataProjectMember,
+    IsStaffOrSuperuser, IsStaffOrReadOnly,
     filter_projects_for_user, filter_project_groups_for_user,
     filter_geodata_for_user, get_accessible_project_mobile_ids,
 )
@@ -298,9 +299,11 @@ class GeoDataViewSet(AuditMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Approve geodata."""
+        """Approve geodata. Staff only."""
         from .audit import log_change
         from datetime import datetime
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response({'detail': 'Only staff can approve geodata.'}, status=status.HTTP_403_FORBIDDEN)
         gd = self.get_object()
         old_status = gd.approval_status
         gd.approval_status = 'approved'
@@ -315,9 +318,11 @@ class GeoDataViewSet(AuditMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Reject geodata."""
+        """Reject geodata. Staff only."""
         from .audit import log_change
         from datetime import datetime
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response({'detail': 'Only staff can reject geodata.'}, status=status.HTTP_403_FORBIDDEN)
         gd = self.get_object()
         old_status = gd.approval_status
         gd.approval_status = 'rejected'
@@ -358,16 +363,22 @@ class GeoDataViewSet(AuditMixin, viewsets.ModelViewSet):
 
 class SyncLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SyncLogSerializer
+    permission_classes = [IsAuthenticated]
     filterset_class = SyncLogFilter
     search_fields = ['project_mobile_id', 'geodata_mobile_id']
     ordering_fields = ['created_at', 'sync_type', 'status']
 
     def get_queryset(self):
-        return SyncLog.objects.select_related('user').all()
+        qs = SyncLog.objects.select_related('user').all()
+        user = self.request.user
+        if not (user.is_superuser or user.is_staff):
+            qs = qs.filter(user=user)
+        return qs
 
 
 class MobileAppVersionViewSet(viewsets.ModelViewSet):
     serializer_class = MobileAppVersionSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrReadOnly]
     filterset_class = MobileAppVersionFilter
     search_fields = ['version', 'release_notes']
     ordering_fields = ['version_code', 'released_at', 'download_count']
@@ -381,12 +392,17 @@ class MobileAppVersionViewSet(viewsets.ModelViewSet):
 
 class FCMTokenViewSet(viewsets.ModelViewSet):
     serializer_class = FCMTokenSerializer
+    permission_classes = [IsAuthenticated]
     filterset_class = FCMTokenFilter
     search_fields = ['user__username', 'device_name', 'device_id']
     ordering_fields = ['updated_at', 'created_at', 'platform']
 
     def get_queryset(self):
-        return FCMToken.objects.select_related('user').all()
+        qs = FCMToken.objects.select_related('user').all()
+        user = self.request.user
+        if not (user.is_superuser or user.is_staff):
+            qs = qs.filter(user=user)
+        return qs
 
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
@@ -397,6 +413,7 @@ class FCMTokenViewSet(viewsets.ModelViewSet):
 
 class TMSLayerViewSet(viewsets.ModelViewSet):
     serializer_class = TMSLayerSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrReadOnly]
     filterset_class = TMSLayerFilter
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'code', 'created_at']
@@ -407,6 +424,7 @@ class TMSLayerViewSet(viewsets.ModelViewSet):
 
 class MobileNotificationViewSet(viewsets.ModelViewSet):
     serializer_class = MobileNotificationSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
     search_fields = ['title', 'body']
     ordering_fields = ['created_at']
 
@@ -416,6 +434,7 @@ class MobileNotificationViewSet(viewsets.ModelViewSet):
 
 class UserManagementViewSet(viewsets.ModelViewSet):
     serializer_class = UserManagementSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['username', 'date_joined', 'last_login']
 
@@ -425,6 +444,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
 class GroupViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
     search_fields = ['name']
     ordering_fields = ['name']
 
@@ -434,6 +454,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PermissionSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrSuperuser]
     search_fields = ['name', 'codename']
     ordering_fields = ['codename', 'name']
 
@@ -447,6 +468,7 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = AdminSettingsSerializer
+    permission_classes = [IsAuthenticated, IsStaffOrReadOnly]
 
     def get_queryset(self):
         return AdminSettings.objects.all()
@@ -486,6 +508,10 @@ class GeoDataCommentViewSet(viewsets.ModelViewSet):
         geodata_id = self.request.query_params.get('geodata')
         if geodata_id:
             qs = qs.filter(geodata_id=geodata_id)
+        user = self.request.user
+        if not (user.is_superuser or user.is_staff):
+            accessible_geodata = filter_geodata_for_user(GeoData.objects.all(), user)
+            qs = qs.filter(geodata__in=accessible_geodata)
         return qs
 
     def perform_create(self, serializer):
@@ -596,7 +622,11 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created_at', 'action', 'model_name']
 
     def get_queryset(self):
-        return AuditLog.objects.select_related('user').all()
+        qs = AuditLog.objects.select_related('user').all()
+        user = self.request.user
+        if not (user.is_superuser or user.is_staff):
+            qs = qs.filter(user=user)
+        return qs
 
     @action(detail=False, methods=['get'])
     def recent_activity(self, request):
@@ -736,7 +766,7 @@ def vector_tile(request, z, x, y):
 # ---------------------------------------------------------------------------
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def tile_proxy(request):
     """
     Proxy endpoint for tile server.

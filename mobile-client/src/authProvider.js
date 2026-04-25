@@ -91,7 +91,7 @@ const authProvider = {
 
     checkError: (error) => {
         const status = error.status || (error.response && error.response.status);
-        if (status === 401 || status === 403) {
+        if (status === 401) {
             localStorage.removeItem('token');
             cachedUserProfile = null;
             cacheTimestamp = 0;

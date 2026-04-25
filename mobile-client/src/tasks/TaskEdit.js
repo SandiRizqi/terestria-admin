@@ -1,11 +1,12 @@
 import React from 'react';
 import {
     Edit, SimpleForm, TextInput, ReferenceInput,
-    SelectInput, DateTimeInput,
+    SelectInput, DateTimeInput, TopToolbar,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
 const TaskEdit = (props) => (
-    <Edit {...props}>
+    <Edit {...props} actions={<TopToolbar><DeleteWithConfirmButton hardDelete /></TopToolbar>}>
         <SimpleForm>
             <TextInput source="title" fullWidth />
             <TextInput source="description" multiline rows={3} fullWidth />

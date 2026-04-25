@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNotify, useRefresh } from 'react-admin';
+import { useNotify, useRefresh, usePermissions } from 'react-admin';
 import Button from '@material-ui/core/Button';
 import Chip from '@material-ui/core/Chip';
 import Dialog from '@material-ui/core/Dialog';
@@ -36,6 +36,8 @@ const ApprovalActions = ({ record }) => {
     const classes = useStyles();
     const notify = useNotify();
     const refresh = useRefresh();
+    const { permissions } = usePermissions();
+    const isStaff = permissions && (permissions.is_staff || permissions.is_superuser);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [notes, setNotes] = useState('');
 
@@ -92,7 +94,7 @@ const ApprovalActions = ({ record }) => {
                 </Button>
             )}
 
-            {record.approval_status === 'review' && (
+            {record.approval_status === 'review' && isStaff && (
                 <>
                     <Button
                         size="small"

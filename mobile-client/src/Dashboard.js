@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useDataProvider } from 'react-admin';
+import { useDataProvider, usePermissions } from 'react-admin';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Grid from '@material-ui/core/Grid';
@@ -108,6 +108,8 @@ const StatCard = ({ title, value, icon: Icon, color, bgColor }) => {
 const Dashboard = () => {
     const classes = useStyles();
     const dataProvider = useDataProvider();
+    const { permissions } = usePermissions();
+    const isStaff = permissions && (permissions.is_staff || permissions.is_superuser);
     const [stats, setStats] = useState({
         projects: 0,
         geodata: 0,
@@ -119,30 +121,30 @@ const Dashboard = () => {
     const [analytics, setAnalytics] = useState(null);
 
     useEffect(() => {
+        if (permissions === undefined) return;
+        const listOpts = { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} };
         const fetchStats = async () => {
-            try {
-                const [projects, geodata, syncLogs, appVersions, fcmTokens, users] = await Promise.all([
-                    dataProvider.getList('projects', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                    dataProvider.getList('geodata', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                    dataProvider.getList('sync-logs', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                    dataProvider.getList('app-versions', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                    dataProvider.getList('fcm-tokens', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                    dataProvider.getList('users', { pagination: { page: 1, perPage: 1 }, sort: { field: 'id', order: 'DESC' }, filter: {} }),
-                ]);
-                setStats({
-                    projects: projects.total,
-                    geodata: geodata.total,
-                    syncLogs: syncLogs.total,
-                    appVersions: appVersions.total,
-                    fcmTokens: fcmTokens.total,
-                    users: users.total,
-                });
-            } catch (e) {
-                console.error('Dashboard stats error:', e);
-            }
+            const requests = [
+                dataProvider.getList('projects', listOpts),
+                dataProvider.getList('geodata', listOpts),
+                dataProvider.getList('sync-logs', listOpts),
+                isStaff ? dataProvider.getList('app-versions', listOpts) : Promise.resolve({ total: null }),
+                isStaff ? dataProvider.getList('fcm-tokens', listOpts) : Promise.resolve({ total: null }),
+                isStaff ? dataProvider.getList('users', listOpts) : Promise.resolve({ total: null }),
+            ];
+            const results = await Promise.allSettled(requests);
+            const val = (i) => results[i].status === 'fulfilled' ? results[i].value.total : 0;
+            setStats({
+                projects: val(0),
+                geodata: val(1),
+                syncLogs: val(2),
+                appVersions: val(3),
+                fcmTokens: val(4),
+                users: val(5),
+            });
         };
         fetchStats();
-    }, [dataProvider]);
+    }, [dataProvider, permissions, isStaff]);
 
     // Fetch analytics data
     useEffect(() => {
@@ -181,18 +183,24 @@ const Dashboard = () => {
                     <StatCard title="Sync Logs" value={stats.syncLogs} icon={SyncIcon}
                         color="#e65100" bgColor="#fff3e0" />
                 </Grid>
-                <Grid item xs={12} sm={6} md={4} lg={2}>
-                    <StatCard title="App Versions" value={stats.appVersions} icon={PhoneAndroidIcon}
-                        color="#6a1b9a" bgColor="#f3e5f5" />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4} lg={2}>
-                    <StatCard title="FCM Tokens" value={stats.fcmTokens} icon={DevicesIcon}
-                        color="#1565c0" bgColor="#e3f2fd" />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4} lg={2}>
-                    <StatCard title="Users" value={stats.users} icon={PeopleIcon}
-                        color="#2e7d32" bgColor="#e8f5e9" />
-                </Grid>
+                {isStaff && (
+                    <Grid item xs={12} sm={6} md={4} lg={2}>
+                        <StatCard title="App Versions" value={stats.appVersions} icon={PhoneAndroidIcon}
+                            color="#6a1b9a" bgColor="#f3e5f5" />
+                    </Grid>
+                )}
+                {isStaff && (
+                    <Grid item xs={12} sm={6} md={4} lg={2}>
+                        <StatCard title="FCM Tokens" value={stats.fcmTokens} icon={DevicesIcon}
+                            color="#1565c0" bgColor="#e3f2fd" />
+                    </Grid>
+                )}
+                {isStaff && (
+                    <Grid item xs={12} sm={6} md={4} lg={2}>
+                        <StatCard title="Users" value={stats.users} icon={PeopleIcon}
+                            color="#2e7d32" bgColor="#e8f5e9" />
+                    </Grid>
+                )}
             </Grid>
 
             {/* Charts Section */}
