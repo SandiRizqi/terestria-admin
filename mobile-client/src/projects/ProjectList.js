@@ -4,6 +4,8 @@ import {
     NumberField, Filter, TextInput, SelectInput, BooleanInput,
 } from 'react-admin';
 import GeometryTypeField from '../components/GeometryTypeField';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
+import BulkActions from './BulkActions';
 
 const ProjectFilter = (props) => (
     <Filter {...props}>
@@ -18,7 +20,7 @@ const ProjectFilter = (props) => (
 );
 
 const ProjectList = (props) => (
-    <List {...props} filters={<ProjectFilter />} sort={{ field: 'created_at', order: 'DESC' }}>
+    <List {...props} filters={<ProjectFilter />} sort={{ field: 'created_at', order: 'DESC' }} bulkActionButtons={<BulkActions />}>
         <Datagrid rowClick="show">
             <TextField source="id" />
             <TextField source="name" />
@@ -27,6 +29,7 @@ const ProjectList = (props) => (
             <TextField source="created_by_username" label="Created By" />
             <BooleanField source="is_active" />
             <DateField source="created_at" showTime />
+            <DeleteWithConfirmButton />
         </Datagrid>
     </List>
 );

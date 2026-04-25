@@ -73,6 +73,25 @@ class ProjectViewSet(AuditMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        """Soft-delete multiple project records. Body: {ids: [1,2,3]}"""
+        from .audit import log_change
+
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'detail': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        qs = self.get_queryset().filter(id__in=ids)
+        count = 0
+        for proj in qs:
+            proj.is_deleted = True
+            proj.save(update_fields=['is_deleted'])
+            log_change(request.user, 'delete', proj, request=request)
+            count += 1
+
+        return Response({'deleted': count})
+
 
 class ProjectGroupViewSet(AuditMixin, viewsets.ModelViewSet):
     serializer_class = ProjectGroupSerializer
@@ -87,6 +106,25 @@ class ProjectGroupViewSet(AuditMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        """Soft-delete multiple project group records. Body: {ids: [1,2,3]}"""
+        from .audit import log_change
+
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'detail': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        qs = self.get_queryset().filter(id__in=ids)
+        count = 0
+        for pg in qs:
+            pg.is_deleted = True
+            pg.save(update_fields=['is_deleted'])
+            log_change(request.user, 'delete', pg, request=request)
+            count += 1
+
+        return Response({'deleted': count})
 
 
 class GeoDataViewSet(AuditMixin, viewsets.ModelViewSet):

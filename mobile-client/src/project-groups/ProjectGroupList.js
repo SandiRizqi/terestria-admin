@@ -3,6 +3,8 @@ import {
     List, Datagrid, TextField, BooleanField, DateField,
     NumberField, Filter, TextInput, BooleanInput,
 } from 'react-admin';
+import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
+import BulkActions from './BulkActions';
 
 const ProjectGroupFilter = (props) => (
     <Filter {...props}>
@@ -12,7 +14,7 @@ const ProjectGroupFilter = (props) => (
 );
 
 const ProjectGroupList = (props) => (
-    <List {...props} filters={<ProjectGroupFilter />} sort={{ field: 'created_at', order: 'DESC' }}>
+    <List {...props} filters={<ProjectGroupFilter />} sort={{ field: 'created_at', order: 'DESC' }} bulkActionButtons={<BulkActions />}>
         <Datagrid rowClick="show">
             <TextField source="id" />
             <TextField source="name" />
@@ -20,6 +22,7 @@ const ProjectGroupList = (props) => (
             <TextField source="created_by_username" label="Created By" />
             <BooleanField source="is_active" />
             <DateField source="created_at" showTime />
+            <DeleteWithConfirmButton />
         </Datagrid>
     </List>
 );

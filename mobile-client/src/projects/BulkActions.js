@@ -31,11 +31,14 @@ const useStyles = makeStyles(() => ({
         color: '#e65100',
         marginRight: 8,
         fontSize: 22,
-        verticalAlign: 'middle',
     },
     countNumber: {
         fontWeight: 700,
         color: '#1b5e20',
+    },
+    deleteButtonText: {
+        color: '#c62828',
+        fontWeight: 600,
     },
     cancelButton: {
         color: '#78909c',
@@ -49,14 +52,18 @@ const useStyles = makeStyles(() => ({
     },
 }));
 
-const BulkDeleteButton = ({ selectedIds, resource = 'geodata' }) => {
+const BulkDeleteButton = ({ selectedIds, resource }) => {
     const [open, setOpen] = useState(false);
     const notify = useNotify();
     const refresh = useRefresh();
     const unselectAll = useUnselectAll();
     const classes = useStyles();
 
-    const resourceLabel = 'geodata record(s)';
+    const resourceLabel = {
+        'projects': 'project(s)',
+        'project-groups': 'project group(s)',
+        'geodata': 'geodata record(s)',
+    }[resource] || 'item(s)';
 
     const handleConfirmDelete = async () => {
         const token = localStorage.getItem('token');
@@ -70,7 +77,7 @@ const BulkDeleteButton = ({ selectedIds, resource = 'geodata' }) => {
                 body: JSON.stringify({ ids: selectedIds }),
             });
             const data = await response.json();
-            notify(`Deleted ${data.deleted || selectedIds.length} records`, 'info');
+            notify(`Deleted ${data.deleted || selectedIds.length} ${resourceLabel}`, 'info');
             setOpen(false);
             unselectAll(resource);
             refresh();
@@ -129,8 +136,10 @@ const BulkDeleteButton = ({ selectedIds, resource = 'geodata' }) => {
     );
 };
 
-const BulkActions = (props) => (
-    <BulkDeleteButton {...props} resource="geodata" />
-);
+const BulkActions = (props) => {
+    // Resource is passed automatically by react-admin in bulkActionButtons
+    const resource = props.resource || 'projects';
+    return <BulkDeleteButton {...props} resource={resource} />;
+};
 
 export default BulkActions;
