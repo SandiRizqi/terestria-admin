@@ -3,9 +3,11 @@
 ## Base URL
 
 ```
-Production: http://portal-gis.tap-agri.com/api/
-Local:      http://localhost:8000/api/
+Production: https://terestria.ruangbumi.com/api/mobile/
+Local:      http://localhost:8000/api/mobile/
 ```
+
+> **Catatan:** Semua mobile admin endpoint menggunakan prefix `/api/mobile/`. Auth endpoint berada di root `/api/`.
 
 ---
 
@@ -14,7 +16,7 @@ Local:      http://localhost:8000/api/
 ### Token Authentication (DRF)
 
 ```
-POST /api/api-token-auth/
+POST /api-token-auth/
 ```
 
 **Request:**
@@ -83,7 +85,7 @@ POST /api/token/refresh/
 ### Get Current User Info
 
 ```
-GET /api/me/
+GET /api/mobile/me/
 ```
 
 **Headers:** `Authorization: Token <token>` atau `Authorization: Bearer <access_token>`
@@ -99,7 +101,7 @@ GET /api/me/
   "is_staff": true,
   "is_superuser": true,
   "groups": ["Admin", "Manager"],
-  "permissions": ["add_project", "change_project", ...]
+  "permissions": ["mobileadmin.add_project", "mobileadmin.change_project"]
 }
 ```
 
@@ -108,14 +110,16 @@ GET /api/me/
 ## Projects
 
 ```
-GET    /api/projects/
-POST   /api/projects/
-GET    /api/projects/{id}/
-GET    /api/projects/{mobile_id}/
-PUT    /api/projects/{id}/
-PATCH  /api/projects/{id}/
-DELETE /api/projects/{id}/
+GET    /api/mobile/projects/
+POST   /api/mobile/projects/
+GET    /api/mobile/projects/{id}/
+GET    /api/mobile/projects/{mobile_id}/
+PUT    /api/mobile/projects/{id}/
+PATCH  /api/mobile/projects/{id}/
+DELETE /api/mobile/projects/{id}/
 ```
+
+> **Permission:** Semua user terautentikasi dapat mengakses. Row-level permission berdasarkan `collectors` dan `created_by`.
 
 ### List Projects
 
@@ -129,14 +133,14 @@ DELETE /api/projects/{id}/
 | `is_deleted` | boolean | Filter deleted records |
 | `created_by` | integer | Filter by creator ID |
 | `ordering` | string | Sort: `name`, `-name`, `created_at`, `-created_at`, `updated_at`, `-updated_at`, `geometry_type` |
-| `page` | integer | Page number (for pagination) |
+| `page` | integer | Page number |
 | `page_size` | integer | Items per page (default 20, max 100) |
 
 **Response (200):**
 ```json
 {
   "count": 42,
-  "next": "http://localhost:8000/api/projects/?page=2",
+  "next": "http://localhost:8000/api/mobile/projects/?page=2",
   "previous": null,
   "results": [
     {
@@ -167,7 +171,7 @@ DELETE /api/projects/{id}/
 ### Get Project by mobile_id
 
 ```
-GET /api/projects/550e8400-e29b-41d4-a716-446655440000/
+GET /api/mobile/projects/550e8400-e29b-41d4-a716-446655440000/
 ```
 
 Returns same format as single project response.
@@ -194,7 +198,7 @@ Returns same format as single project response.
 ### Update Project
 
 ```
-PATCH /api/projects/{id}/
+PATCH /api/mobile/projects/{id}/
 ```
 
 **Request (partial):**
@@ -208,7 +212,7 @@ PATCH /api/projects/{id}/
 ### Soft Delete Project
 
 ```
-PATCH /api/projects/{id}/
+PATCH /api/mobile/projects/{id}/
 ```
 
 **Request:**
@@ -220,17 +224,37 @@ PATCH /api/projects/{id}/
 
 > **Note:** Soft delete via `is_deleted: true`. Tidak menghapus record dari database.
 
+### Bulk Delete Projects
+
+```
+POST /api/mobile/projects/bulk_delete/
+```
+
+**Request:**
+```json
+{
+  "ids": [1, 2, 3]
+}
+```
+
+**Response (200):**
+```json
+{
+  "deleted": 3
+}
+```
+
 ---
 
 ## Project Groups
 
 ```
-GET    /api/project-groups/
-POST   /api/project-groups/
-GET    /api/project-groups/{id}/
-PUT    /api/project-groups/{id}/
-PATCH  /api/project-groups/{id}/
-DELETE /api/project-groups/{id}/
+GET    /api/mobile/project-groups/
+POST   /api/mobile/project-groups/
+GET    /api/mobile/project-groups/{id}/
+PUT    /api/mobile/project-groups/{id}/
+PATCH  /api/mobile/project-groups/{id}/
+DELETE /api/mobile/project-groups/{id}/
 ```
 
 ### List Project Groups
@@ -240,7 +264,6 @@ DELETE /api/project-groups/{id}/
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `search` | string | Search by name, description |
-| `geometry_type` | string | Filter: `point`, `line`, `polygon` |
 | `is_active` | boolean | Filter active/inactive |
 | `is_deleted` | boolean | Filter deleted records |
 | `ordering` | string | Sort: `name`, `-name`, `created_at`, `-created_at` |
@@ -255,7 +278,6 @@ DELETE /api/project-groups/{id}/
       "name": "Agriculture Projects",
       "description": "All agriculture-related surveys",
       "projects": [1, 2, 3],
-      "geometry_type": "point",
       "json_template": {
         "formFields": [
           {"label": "Crop Type", "type": "dropdown", "options": ["Rice", "Corn", "Soybean"]}
@@ -282,7 +304,6 @@ DELETE /api/project-groups/{id}/
   "name": "New Group",
   "description": "Group description",
   "projects": [1, 2],
-  "geometry_type": "polygon",
   "json_template": {
     "formFields": [
       {"label": "Area Name", "type": "text", "required": true}
@@ -293,17 +314,37 @@ DELETE /api/project-groups/{id}/
 }
 ```
 
+### Bulk Delete Project Groups
+
+```
+POST /api/mobile/project-groups/bulk_delete/
+```
+
+**Request:**
+```json
+{
+  "ids": [1, 2, 3]
+}
+```
+
+**Response (200):**
+```json
+{
+  "deleted": 3
+}
+```
+
 ---
 
 ## GeoData
 
 ```
-GET    /api/geodata/
-POST   /api/geodata/
-GET    /api/geodata/{id}/
-PUT    /api/geodata/{id}/
-PATCH  /api/geodata/{id}/
-DELETE /api/geodata/{id}/
+GET    /api/mobile/geodata/
+POST   /api/mobile/geodata/
+GET    /api/mobile/geodata/{id}/
+PUT    /api/mobile/geodata/{id}/
+PATCH  /api/mobile/geodata/{id}/
+DELETE /api/mobile/geodata/{id}/
 ```
 
 ### List GeoData
@@ -374,15 +415,14 @@ DELETE /api/geodata/{id}/
   },
   "points": [
     {"latitude": -6.2090, "longitude": 106.8458, "timestamp": "2024-06-22T09:00:00Z"}
-  ],
-  "collected_by": 2
+  ]
 }
 ```
 
 ### Update GeoData
 
 ```
-PATCH /api/geodata/{id}/
+PATCH /api/mobile/geodata/{id}/
 ```
 
 **Request:**
@@ -391,8 +431,7 @@ PATCH /api/geodata/{id}/
   "form_data": {
     "plant_height": 55.0,
     "notes": "Updated after verification"
-  },
-  "approval_status": "approved"
+  }
 }
 ```
 
@@ -403,7 +442,7 @@ PATCH /api/geodata/{id}/
 ### Export GeoData
 
 ```
-GET /api/geodata/export/
+GET /api/mobile/geodata/export/
 ```
 
 **Query Parameters:**
@@ -418,7 +457,7 @@ GET /api/geodata/export/
 
 **Example:**
 ```
-GET /api/geodata/export/?format=csv&project=550e8400-e29b-41d4-a716-446655440000
+GET /api/mobile/geodata/export/?format=csv&project=550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Response:** File download (CSV, GeoJSON, atau ZIP/Shapefile)
@@ -428,7 +467,7 @@ GET /api/geodata/export/?format=csv&project=550e8400-e29b-41d4-a716-446655440000
 ### Import GeoData
 
 ```
-POST /api/geodata/import_data/
+POST /api/mobile/geodata/import_data/
 ```
 
 **Headers:** `Content-Type: multipart/form-data`
@@ -443,7 +482,7 @@ POST /api/geodata/import_data/
 
 **Example (curl):**
 ```bash
-curl -X POST http://localhost:8000/api/geodata/import_data/ \
+curl -X POST http://localhost:8000/api/mobile/geodata/import_data/ \
   -H "Authorization: Token <token>" \
   -F "file=@data.geojson" \
   -F "project_id=1"
@@ -481,7 +520,7 @@ curl -X POST http://localhost:8000/api/geodata/import_data/ \
 ### Bulk Delete
 
 ```
-POST /api/geodata/bulk_delete/
+POST /api/mobile/geodata/bulk_delete/
 ```
 
 **Request:**
@@ -505,7 +544,7 @@ POST /api/geodata/bulk_delete/
 ### Bulk Update
 
 ```
-POST /api/geodata/bulk_update/
+POST /api/mobile/geodata/bulk_update/
 ```
 
 **Request:**
@@ -532,7 +571,7 @@ POST /api/geodata/bulk_update/
 ### Submit for Review
 
 ```
-POST /api/geodata/{id}/submit_for_review/
+POST /api/mobile/geodata/{id}/submit_for_review/
 ```
 
 **Response (200):**
@@ -547,8 +586,10 @@ POST /api/geodata/{id}/submit_for_review/
 ### Approve GeoData
 
 ```
-POST /api/geodata/{id}/approve/
+POST /api/mobile/geodata/{id}/approve/
 ```
+
+> **Permission:** Staff atau superuser only.
 
 **Request (optional):**
 ```json
@@ -569,8 +610,10 @@ POST /api/geodata/{id}/approve/
 ### Reject GeoData
 
 ```
-POST /api/geodata/{id}/reject/
+POST /api/mobile/geodata/{id}/reject/
 ```
+
+> **Permission:** Staff atau superuser only.
 
 **Request (optional):**
 ```json
@@ -591,7 +634,7 @@ POST /api/geodata/{id}/reject/
 ### GeoData Statistics
 
 ```
-GET /api/geodata/statistics/
+GET /api/mobile/geodata/statistics/
 ```
 
 **Query Parameters:**
@@ -604,18 +647,14 @@ GET /api/geodata/statistics/
 ```json
 {
   "total": 1024,
-  "approved": 800,
-  "rejected": 50,
-  "draft": 174,
-  "review": 0,
-  "by_project": {
-    "1": {"total": 500, "approved": 400, "rejected": 20},
-    "2": {"total": 524, "approved": 400, "rejected": 30}
-  },
-  "by_collector": {
-    "2": {"total": 300, "approved": 250, "rejected": 10},
-    "3": {"total": 200, "approved": 150, "rejected": 5}
-  }
+  "by_project": [
+    {"project__name": "Rice Field Survey", "project__geometry_type": "point", "count": 500},
+    {"project__name": "Forest Mapping", "project__geometry_type": "polygon", "count": 524}
+  ],
+  "by_collector": [
+    {"collected_by__username": "field_worker", "count": 300},
+    {"collected_by__username": "surveyor1", "count": 200}
+  ]
 }
 ```
 
@@ -624,12 +663,12 @@ GET /api/geodata/statistics/
 ## GeoData Comments
 
 ```
-GET    /api/geodata-comments/
-POST   /api/geodata-comments/
-GET    /api/geodata-comments/{id}/
-PUT    /api/geodata-comments/{id}/
-PATCH  /api/geodata-comments/{id}/
-DELETE /api/geodata-comments/{id}/
+GET    /api/mobile/geodata-comments/
+POST   /api/mobile/geodata-comments/
+GET    /api/mobile/geodata-comments/{id}/
+PUT    /api/mobile/geodata-comments/{id}/
+PATCH  /api/mobile/geodata-comments/{id}/
+DELETE /api/mobile/geodata-comments/{id}/
 ```
 
 ### List Comments
@@ -639,7 +678,6 @@ DELETE /api/geodata-comments/{id}/
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `geodata` | integer | Filter by geodata ID |
-| `user` | integer | Filter by user ID |
 
 **Response (200):**
 ```json
@@ -674,13 +712,15 @@ DELETE /api/geodata-comments/{id}/
 ## Tasks
 
 ```
-GET    /api/tasks/
-POST   /api/tasks/
-GET    /api/tasks/{id}/
-PUT    /api/tasks/{id}/
-PATCH  /api/tasks/{id}/
-DELETE /api/tasks/{id}/
+GET    /api/mobile/tasks/
+POST   /api/mobile/tasks/
+GET    /api/mobile/tasks/{id}/
+PUT    /api/mobile/tasks/{id}/
+PATCH  /api/mobile/tasks/{id}/
+DELETE /api/mobile/tasks/{id}/
 ```
+
+> **Permission:** Non-staff hanya melihat task yang di-assign ke mereka atau dibuat oleh mereka.
 
 ### List Tasks
 
@@ -742,8 +782,10 @@ DELETE /api/tasks/{id}/
 ## Sync Logs
 
 ```
-GET /api/sync-logs/
+GET /api/mobile/sync-logs/
 ```
+
+> **Permission:** Non-staff hanya melihat sync log milik sendiri.
 
 ### List Sync Logs
 
@@ -786,13 +828,15 @@ GET /api/sync-logs/
 ## Mobile App Versions
 
 ```
-GET    /api/app-versions/
-POST   /api/app-versions/
-GET    /api/app-versions/{id}/
-PUT    /api/app-versions/{id}/
-PATCH  /api/app-versions/{id}/
-DELETE /api/app-versions/{id}/
+GET    /api/mobile/app-versions/
+POST   /api/mobile/app-versions/
+GET    /api/mobile/app-versions/{id}/
+PUT    /api/mobile/app-versions/{id}/
+PATCH  /api/mobile/app-versions/{id}/
+DELETE /api/mobile/app-versions/{id}/
 ```
+
+> **Permission:** Read untuk semua user terautentikasi. Write hanya staff/superuser.
 
 ### List Versions
 
@@ -831,6 +875,8 @@ DELETE /api/app-versions/{id}/
 
 ### Create Version
 
+> **Permission:** Staff/superuser only.
+
 **Request:**
 ```json
 {
@@ -850,13 +896,15 @@ DELETE /api/app-versions/{id}/
 ## FCM Tokens
 
 ```
-GET    /api/fcm-tokens/
-POST   /api/fcm-tokens/
-GET    /api/fcm-tokens/{id}/
-PUT    /api/fcm-tokens/{id}/
-PATCH  /api/fcm-tokens/{id}/
-DELETE /api/fcm-tokens/{id}/
+GET    /api/mobile/fcm-tokens/
+POST   /api/mobile/fcm-tokens/
+GET    /api/mobile/fcm-tokens/{id}/
+PUT    /api/mobile/fcm-tokens/{id}/
+PATCH  /api/mobile/fcm-tokens/{id}/
+DELETE /api/mobile/fcm-tokens/{id}/
 ```
+
+> **Permission:** Non-staff hanya melihat token milik sendiri.
 
 ### List Tokens
 
@@ -907,18 +955,33 @@ DELETE /api/fcm-tokens/{id}/
 }
 ```
 
+### Deactivate Token
+
+```
+POST /api/mobile/fcm-tokens/{id}/deactivate/
+```
+
+**Response (200):**
+```json
+{
+  "status": "deactivated"
+}
+```
+
 ---
 
 ## TMS Layers
 
 ```
-GET    /api/tms-layers/
-POST   /api/tms-layers/
-GET    /api/tms-layers/{id}/
-PUT    /api/tms-layers/{id}/
-PATCH  /api/tms-layers/{id}/
-DELETE /api/tms-layers/{id}/
+GET    /api/mobile/tms-layers/
+POST   /api/mobile/tms-layers/
+GET    /api/mobile/tms-layers/{id}/
+PUT    /api/mobile/tms-layers/{id}/
+PATCH  /api/mobile/tms-layers/{id}/
+DELETE /api/mobile/tms-layers/{id}/
 ```
+
+> **Permission:** Read untuk semua user terautentikasi. Write hanya staff/superuser.
 
 ### List Layers
 
@@ -954,6 +1017,8 @@ DELETE /api/tms-layers/{id}/
 
 ### Create Layer
 
+> **Permission:** Staff/superuser only.
+
 **Request:**
 ```json
 {
@@ -974,13 +1039,15 @@ DELETE /api/tms-layers/{id}/
 ## Notifications
 
 ```
-GET    /api/notifications/
-POST   /api/notifications/
-GET    /api/notifications/{id}/
-PUT    /api/notifications/{id}/
-PATCH  /api/notifications/{id}/
-DELETE /api/notifications/{id}/
+GET    /api/mobile/notifications/
+POST   /api/mobile/notifications/
+GET    /api/mobile/notifications/{id}/
+PUT    /api/mobile/notifications/{id}/
+PATCH  /api/mobile/notifications/{id}/
+DELETE /api/mobile/notifications/{id}/
 ```
+
+> **Permission:** Staff/superuser only.
 
 ### List Notifications
 
@@ -1006,6 +1073,8 @@ DELETE /api/notifications/{id}/
 
 ### Create Notification
 
+> **Permission:** Staff/superuser only.
+
 **Request:**
 ```json
 {
@@ -1022,13 +1091,15 @@ DELETE /api/notifications/{id}/
 ## Users (Management)
 
 ```
-GET    /api/users/
-POST   /api/users/
-GET    /api/users/{id}/
-PUT    /api/users/{id}/
-PATCH  /api/users/{id}/
-DELETE /api/users/{id}/
+GET    /api/mobile/users/
+POST   /api/mobile/users/
+GET    /api/mobile/users/{id}/
+PUT    /api/mobile/users/{id}/
+PATCH  /api/mobile/users/{id}/
+DELETE /api/mobile/users/{id}/
 ```
+
+> **Permission:** Staff/superuser only.
 
 ### List Users
 
@@ -1061,8 +1132,8 @@ DELETE /api/users/{id}/
       "project_count": 5,
       "groups": [1],
       "group_names": ["Admin"],
-      "user_permissions": [1, 2, 3, ...],
-      "permission_names": ["add_project", "change_project", ...]
+      "user_permissions": [1, 2, 3],
+      "permission_names": ["add_project", "change_project"]
     }
   ]
 }
@@ -1089,7 +1160,7 @@ DELETE /api/users/{id}/
 ### Update User
 
 ```
-PATCH /api/users/{id}/
+PATCH /api/mobile/users/{id}/
 ```
 
 **Request (example - change password):**
@@ -1111,13 +1182,15 @@ PATCH /api/users/{id}/
 ## Groups
 
 ```
-GET    /api/groups/
-POST   /api/groups/
-GET    /api/groups/{id}/
-PUT    /api/groups/{id}/
-PATCH  /api/groups/{id}/
-DELETE /api/groups/{id}/
+GET    /api/mobile/groups/
+POST   /api/mobile/groups/
+GET    /api/mobile/groups/{id}/
+PUT    /api/mobile/groups/{id}/
+PATCH  /api/mobile/groups/{id}/
+DELETE /api/mobile/groups/{id}/
 ```
+
+> **Permission:** Staff/superuser only.
 
 ### List Groups
 
@@ -1130,7 +1203,7 @@ DELETE /api/groups/{id}/
       "id": 1,
       "name": "Admin",
       "permissions": [1, 2, 3, 4, 5],
-      "permission_names": ["add_project", "change_project", ...],
+      "permission_names": ["add_project", "change_project"],
       "user_count": 2
     },
     {
@@ -1159,8 +1232,10 @@ DELETE /api/groups/{id}/
 ## Permissions
 
 ```
-GET /api/permissions/
+GET /api/mobile/permissions/
 ```
+
+> **Permission:** Staff/superuser only. Hanya menampilkan permission dari app `mobileadmin` dan `auth`.
 
 ### List Permissions
 
@@ -1185,35 +1260,50 @@ GET /api/permissions/
 ## Admin Settings
 
 ```
-GET    /api/admin-settings/
-PUT    /api/admin-settings/{id}/
-PATCH  /api/admin-settings/{id}/
+GET   /api/mobile/admin-settings/
+PUT   /api/mobile/admin-settings/{id}/
+PATCH /api/mobile/admin-settings/{id}/
 ```
+
+> **Permission:** Read untuk semua user terautentikasi. Write hanya staff/superuser.
+
+> **Note:** Settings adalah singleton — selalu ada tepat satu record.
 
 ### Get Settings
 
 **Response (200):**
 ```json
 {
-  "id": 1,
-  "app_name": "Terestria Admin",
-  "logo_url": "https://storage.example.com/logo.png",
-  "logo_image": null,
-  "logo_image_url": "https://storage.example.com/logo.png",
-  "primary_color": "#2196F3",
-  "primary_dark": "#1976D2",
-  "primary_light": "#BBDEFB",
-  "sidebar_color": "#263238",
-  "accent_color": "#FF5722",
-  "background_color": "#FAFAFA",
-  "font_family": "Roboto, sans-serif",
-  "default_map_center_lng": 106.8456,
-  "default_map_center_lat": -6.2088,
-  "default_map_zoom": 10
+  "count": 1,
+  "results": [
+    {
+      "id": 1,
+      "app_name": "Terestria Admin",
+      "logo_url": "https://storage.example.com/logo.png",
+      "logo_image": null,
+      "logo_image_url": "https://storage.example.com/logo.png",
+      "primary_color": "#2196F3",
+      "primary_dark": "#1976D2",
+      "primary_light": "#BBDEFB",
+      "sidebar_color": "#263238",
+      "accent_color": "#FF5722",
+      "background_color": "#FAFAFA",
+      "font_family": "Roboto, sans-serif",
+      "default_map_center_lng": 106.8456,
+      "default_map_center_lat": -6.2088,
+      "default_map_zoom": 10
+    }
+  ]
 }
 ```
 
 ### Update Settings
+
+```
+PATCH /api/mobile/admin-settings/{id}/
+```
+
+> **Permission:** Staff/superuser only.
 
 **Request:**
 ```json
@@ -1231,8 +1321,10 @@ PATCH  /api/admin-settings/{id}/
 ## Audit Logs
 
 ```
-GET /api/audit-logs/
+GET /api/mobile/audit-logs/
 ```
+
+> **Permission:** Non-staff hanya melihat log milik sendiri.
 
 ### List Audit Logs
 
@@ -1271,12 +1363,37 @@ GET /api/audit-logs/
 }
 ```
 
+### Recent Activity
+
+```
+GET /api/mobile/audit-logs/recent_activity/
+```
+
+Returns last 50 audit log entries (filtered by user permission).
+
+**Response:** Same format as list, max 50 items.
+
+### Record History
+
+```
+GET /api/mobile/audit-logs/record_history/?model_name=project&object_id=1
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `model_name` | string | Yes | Model name (e.g., `project`, `geodata`) |
+| `object_id` | integer | Yes | Object ID |
+
+**Response:** Same format as list, filtered to that specific record.
+
 ---
 
 ## Analytics / Dashboard
 
 ```
-GET /api/analytics/dashboard/
+GET /api/mobile/analytics/dashboard/
 ```
 
 ### Dashboard Statistics
@@ -1284,36 +1401,48 @@ GET /api/analytics/dashboard/
 **Response (200):**
 ```json
 {
-  "total_projects": 42,
-  "active_projects": 38,
-  "total_geodata": 15000,
-  "geodata_this_month": 500,
-  "total_users": 25,
-  "active_users": 20,
-  "pending_review": 45,
+  "geodata_by_project": [
+    {"project__name": "Rice Field Survey", "count": 500},
+    {"project__name": "Forest Mapping", "count": 300}
+  ],
+  "geodata_by_collector": [
+    {"collected_by__username": "field_worker", "count": 300},
+    {"collected_by__username": "surveyor1", "count": 200}
+  ],
+  "geodata_by_date": [
+    {"date": "2024-06-01", "count": 25},
+    {"date": "2024-06-02", "count": 30}
+  ],
+  "geodata_by_geometry": [
+    {"project__geometry_type": "point", "count": 800},
+    {"project__geometry_type": "polygon", "count": 224}
+  ],
+  "sync_activity": [
+    {"date": "2024-06-01", "status": "success", "count": 48},
+    {"date": "2024-06-01", "status": "failed", "count": 2}
+  ],
   "recent_activity": [
     {
-      "user": "admin",
-      "action": "created",
-      "model": "project",
-      "object": "New Survey",
-      "timestamp": "2024-06-20T10:00:00Z"
+      "id": 1,
+      "user": 1,
+      "user_username": "admin",
+      "action": "create",
+      "model_name": "project",
+      "object_repr": "New Survey",
+      "created_at": "2024-06-20T10:00:00Z"
     }
-  ],
-  "sync_today": {
-    "total": 50,
-    "successful": 48,
-    "failed": 2
-  }
+  ]
 }
 ```
+
+> **Note:** `geodata_by_date` menampilkan data 30 hari terakhir. `recent_activity` menampilkan 20 log terakhir. Data geodata difilter sesuai permission user.
 
 ---
 
 ## Spatial Query
 
 ```
-GET /api/spatial-query/
+GET /api/mobile/spatial-query/
 ```
 
 ### Radius Search
@@ -1329,7 +1458,7 @@ GET /api/spatial-query/
 
 **Example:**
 ```
-GET /api/spatial-query/?lng=106.8456&lat=-6.2088&radius_m=500&project_id=550e8400-e29b-41d4-a716-446655440000
+GET /api/mobile/spatial-query/?lng=106.8456&lat=-6.2088&radius_m=500&project_id=550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Response (200):**
@@ -1359,17 +1488,19 @@ GET /api/spatial-query/?lng=106.8456&lat=-6.2088&radius_m=500&project_id=550e840
 }
 ```
 
+> **Note:** Maksimal 500 hasil. Row-level permission diterapkan otomatis.
+
 ---
 
 ## Vector Tile
 
 ```
-GET /api/tiles/{z}/{x}/{y}.pbf
+GET /api/mobile/tiles/{z}/{x}/{y}.pbf
 ```
 
 ### Get Vector Tile
 
-**Parameters:**
+**Path Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -1377,14 +1508,29 @@ GET /api/tiles/{z}/{x}/{y}.pbf
 | `x` | integer | Tile column |
 | `y` | integer | Tile row |
 
-**Response:** Vector tile in MVT format (application/x-protobuf)
+**Query Parameters (salah satu wajib):**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `project_id` | string | mobile_id dari satu project |
+| `group_id` | integer | ID dari ProjectGroup |
+
+**Example:**
+```
+GET /api/mobile/tiles/10/819/512.pbf?project_id=550e8400-e29b-41d4-a716-446655440000
+GET /api/mobile/tiles/10/819/512.pbf?group_id=1
+```
+
+**Response:** Vector tile dalam format MVT (application/x-protobuf)
+
+> **Note:** Cache-Control: public, max-age=3600. Row-level permission diterapkan berdasarkan project access.
 
 ---
 
 ## Tile Proxy
 
 ```
-GET /api/proxy?url=<encoded_url>
+GET /api/mobile/proxy?tile=<tile_path>
 ```
 
 ### Proxy External Tiles
@@ -1393,14 +1539,14 @@ GET /api/proxy?url=<encoded_url>
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | Yes | URL-encoded tile URL to proxy |
+| `tile` | string | Yes | Path tile relatif dari `portal-gis.tap-agri.com` |
 
 **Example:**
 ```
-GET /api/proxy?url=https%3A%2F%2Ftile.openstreetmap.org%2F10%2F163%2F395.png
+GET /api/mobile/proxy?tile=/tms/tile/geoportal/fu_ebl_2025/+4326/10/819/512.png
 ```
 
-**Response:** Tile image (PNG/JPEG) with appropriate content-type headers.
+**Response:** Tile image (PNG/JPEG) dengan content-type headers dari sumber.
 
 ---
 
@@ -1460,7 +1606,7 @@ Custom page size: `?page_size=50` (max 100)
 ```json
 {
   "count": 100,
-  "next": "http://localhost:8000/api/projects/?page=2",
+  "next": "http://localhost:8000/api/mobile/projects/?page=2",
   "previous": null,
   "results": [...]
 }
@@ -1486,13 +1632,15 @@ All list endpoints support Django Filter syntax:
 ## Notes
 
 - Semua endpoint (kecuali `/api-token-auth/`, `/api/token/`, `/api/token/refresh/`) memerlukan authentication token di header:
-  - `Authorization: Token <token>` atau
-  - `Authorization: Bearer <access_token>`
+  - `Authorization: Token <token>` — Token DRF
+  - `Authorization: Bearer <access_token>` — JWT
 
 - Semua timestamp dalam format ISO 8601 (UTC)
 
-- Soft delete pattern: gunakan `PATCH` dengan `{"is_deleted": true}` daripada `DELETE`
+- **Soft delete** (Projects, ProjectGroups, GeoData): gunakan `PATCH` dengan `{"is_deleted": true}` daripada `DELETE`
+
+- **Hard delete** (Users, Groups, Tasks, Notifications, FCMTokens, TMSLayers, AppVersions): gunakan `DELETE`
 
 - Primary key integer OR UUID mobile_id dapat digunakan untuk lookup di Project dan GeoData
 
-- Row-level permissions diterapkan otomatis berdasarkan user dan object relationship
+- Row-level permission diterapkan otomatis berdasarkan `collectors` / `created_by` / `access_by` relationship
