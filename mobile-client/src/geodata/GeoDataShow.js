@@ -27,8 +27,15 @@ const GeoDataShowLayout = ({ record, ...props }) => (
     </SimpleShowLayout>
 );
 
+const GeoDataShowActions = ({ basePath, data }) => (
+    <TopToolbar>
+        <EditButton basePath={basePath} record={data} />
+        <DeleteWithConfirmButton />
+    </TopToolbar>
+);
+
 const GeoDataShow = (props) => (
-    <Show {...props} actions={<TopToolbar><EditButton /><DeleteWithConfirmButton /></TopToolbar>}>
+    <Show {...props} actions={<GeoDataShowActions />}>
         <GeoDataShowLayout />
     </Show>
 );

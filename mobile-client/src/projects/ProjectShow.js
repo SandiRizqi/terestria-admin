@@ -7,8 +7,15 @@ import JsonField from '../components/JsonField';
 import GeometryTypeField from '../components/GeometryTypeField';
 import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
+const ProjectShowActions = ({ basePath, data }) => (
+    <TopToolbar>
+        <EditButton basePath={basePath} record={data} />
+        <DeleteWithConfirmButton />
+    </TopToolbar>
+);
+
 const ProjectShow = (props) => (
-    <Show {...props} actions={<TopToolbar><EditButton /><DeleteWithConfirmButton /></TopToolbar>}>
+    <Show {...props} actions={<ProjectShowActions />}>
         <SimpleShowLayout>
             <TextField source="id" />
             <TextField source="mobile_id" label="Mobile ID" />

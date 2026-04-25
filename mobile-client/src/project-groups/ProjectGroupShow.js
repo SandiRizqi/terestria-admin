@@ -6,8 +6,15 @@ import {
 import JsonField from '../components/JsonField';
 import DeleteWithConfirmButton from '../components/DeleteWithConfirmButton';
 
+const ProjectGroupShowActions = ({ basePath, data }) => (
+    <TopToolbar>
+        <EditButton basePath={basePath} record={data} />
+        <DeleteWithConfirmButton />
+    </TopToolbar>
+);
+
 const ProjectGroupShow = (props) => (
-    <Show {...props} actions={<TopToolbar><EditButton /><DeleteWithConfirmButton /></TopToolbar>}>
+    <Show {...props} actions={<ProjectGroupShowActions />}>
         <SimpleShowLayout>
             <TextField source="id" />
             <TextField source="name" />

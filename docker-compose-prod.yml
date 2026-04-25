@@ -20,5 +20,12 @@ services:
       - app_media:/app/media
     restart: unless-stopped
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token eyJhIjoiYTg4M2VmZTFkMWFlOThiYjhjMTY4NjA1ZmIwZmUyMzkiLCJ0IjoiMTEyMGY4MjAtYWYwYy00YWZlLWFlNWQtMzBkNjliYjM3ODcwIiwicyI6IlpUa3lNR05sTmpZdFpqWmtOQzAwWTJZeExUazRZamt0TkRZelpUUm1ZbUZtWlRBMCJ9
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
   app_media:
