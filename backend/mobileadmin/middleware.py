@@ -17,6 +17,7 @@ class TokenAuthMiddleware:
     # Paths that don't require authentication
     PUBLIC_PATHS = [
         '/api-token-auth/',
+        '/api/mobile/register/',
         '/admin/',
         '/static/',
         '/media/',

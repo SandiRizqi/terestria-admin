@@ -13,6 +13,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
 
 from django.contrib.auth.models import User, Group, Permission
 
@@ -914,41 +915,46 @@ def me(request):
     })
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def register(request):
-    """Public registration: create user + workspace, return auth token."""
-    serializer = RegisterSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RegisterView(APIView):
+    """Public registration endpoint — no authentication required."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
-    data = serializer.validated_data
-    user = User.objects.create_user(
-        username=data['username'],
-        email=data['email'],
-        password=data['password'],
-    )
-    workspace = Workspace.objects.create(
-        name=data['workspace_name'],
-        description=data.get('workspace_description', ''),
-        owner=user,
-    )
-    WorkspaceMember.objects.create(workspace=workspace, user=user, role='owner')
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    token, _ = Token.objects.get_or_create(user=user)
-    return Response({
-        'token': token.key,
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-        },
-        'workspace': {
-            'id': workspace.id,
-            'name': workspace.name,
-            'slug': workspace.slug,
-        },
-    }, status=status.HTTP_201_CREATED)
+        data = serializer.validated_data
+        user = User.objects.create_user(
+            username=data['username'],
+            email=data['email'],
+            password=data['password'],
+        )
+        workspace = Workspace.objects.create(
+            name=data['workspace_name'],
+            description=data.get('workspace_description', ''),
+            owner=user,
+        )
+        WorkspaceMember.objects.create(workspace=workspace, user=user, role='owner')
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+            },
+            'workspace': {
+                'id': workspace.id,
+                'name': workspace.name,
+                'slug': workspace.slug,
+            },
+        }, status=status.HTTP_201_CREATED)
+
+
+register = RegisterView.as_view()
 
 
 # ---------------------------------------------------------------------------
