@@ -6,6 +6,8 @@ from django.contrib.gis.geos import Point, LineString, Polygon
 from django.contrib.postgres.fields import JSONField
 from django.contrib.postgres.search import SearchVectorField, SearchVector
 from django.utils import timezone
+from django.utils.text import slugify
+import uuid
 
 
 GEOMETRY_CHOICES = [
@@ -15,7 +17,67 @@ GEOMETRY_CHOICES = [
 ]
 
 
+class Workspace(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=120, unique=True)
+    description = models.TextField(blank=True, default='')
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='owned_workspaces'
+    )
+    members = models.ManyToManyField(
+        User, through='WorkspaceMember', related_name='workspaces', blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'mobileadmin_workspaces'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)[:100]
+            slug = base
+            n = 1
+            while Workspace.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+
+class WorkspaceMember(models.Model):
+    ROLE_CHOICES = [
+        ('owner', 'Owner'),
+        ('admin', 'Admin'),
+        ('member', 'Member'),
+    ]
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name='workspace_members'
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='workspace_memberships'
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'mobileadmin_workspace_members'
+        unique_together = [('workspace', 'user')]
+
+    def __str__(self):
+        return f"{self.user.username} in {self.workspace.name} ({self.role})"
+
+
 class Project(models.Model):
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='projects'
+    )
     mobile_id = models.CharField(max_length=100, unique=True, db_index=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
@@ -59,7 +121,11 @@ class Project(models.Model):
 
 
 class ProjectGroup(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='project_groups'
+    )
+    name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     projects = models.ManyToManyField(
         Project, blank=True, related_name='groups',
@@ -396,6 +462,10 @@ class FCMToken(models.Model):
 
 
 class TMSLayer(models.Model):
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='tms_layers'
+    )
     name = models.CharField(max_length=255)
     code = models.CharField(max_length=100, unique=True, db_index=True)
     description = models.TextField(blank=True, null=True)

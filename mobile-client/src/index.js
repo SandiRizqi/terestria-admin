@@ -18,21 +18,30 @@ import users from './users';
 import groups from './groups';
 import auditLogs from './audit-logs';
 import tasks from './tasks';
+import workspaces from './workspaces';
 import authProvider from './authProvider';
 import LoginPage from './LoginPage';
+import RegisterPage from './RegisterPage';
 import MapView from './map-view/MapView';
 import SettingsPage from './settings/SettingsPage';
 
-const dataProvider = drfProvider("/api/mobile", fetchJsonWithAuthToken);
+// Wrap fetchJsonWithAuthToken to inject the active workspace header
+const httpClient = (url, options = {}) => {
+    const workspaceId = localStorage.getItem('workspace_id');
+    if (workspaceId) {
+        if (!options.headers) {
+            options.headers = new Headers({ Accept: 'application/json' });
+        }
+        options.headers.set('X-Workspace', workspaceId);
+    }
+    return fetchJsonWithAuthToken(url, options);
+};
 
-/**
- * App wrapper that loads AdminSettings to build a dynamic theme.
- * Settings are fetched once on mount and after every save from SettingsPage.
- */
+const dataProvider = drfProvider("/api/mobile", httpClient);
+
 const App = () => {
     const [theme, setTheme] = useState(createTerestriaTheme());
 
-    // Load settings on mount (only if logged in)
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -43,19 +52,14 @@ const App = () => {
             .then((r) => r.json())
             .then((data) => {
                 const settings = data.results && data.results[0];
-                if (settings) {
-                    setTheme(createTerestriaTheme(settings));
-                }
+                if (settings) setTheme(createTerestriaTheme(settings));
             })
             .catch(() => {});
     }, []);
 
-    // Listen for custom event dispatched from SettingsPage after save
     useEffect(() => {
         const handler = (e) => {
-            if (e.detail) {
-                setTheme(createTerestriaTheme(e.detail));
-            }
+            if (e.detail) setTheme(createTerestriaTheme(e.detail));
         };
         window.addEventListener('terestria-settings-updated', handler);
         return () => window.removeEventListener('terestria-settings-updated', handler);
@@ -73,8 +77,10 @@ const App = () => {
             customRoutes={[
                 <Route exact path="/map" component={MapView} />,
                 <Route exact path="/settings" component={SettingsPage} noLayout={false} />,
+                <Route exact path="/register" component={RegisterPage} noLayout />,
             ]}
         >
+            <Resource name="workspaces" {...workspaces} />
             <Resource name="projects" {...projects} />
             <Resource name="project-groups" {...projectGroups} />
             <Resource name="geodata" {...geodata} />

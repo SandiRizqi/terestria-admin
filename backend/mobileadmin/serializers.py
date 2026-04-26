@@ -5,7 +5,62 @@ from .models import (
     Project, ProjectGroup, GeoData, SyncLog,
     MobileAppVersion, FCMToken, TMSLayer, MobileNotification,
     AdminSettings, AuditLog, GeoDataComment, Task,
+    Workspace, WorkspaceMember,
 )
+
+
+class WorkspaceMemberSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = WorkspaceMember
+        fields = ['id', 'user', 'username', 'email', 'role', 'joined_at']
+        read_only_fields = ['joined_at']
+
+
+class WorkspaceSerializer(serializers.ModelSerializer):
+    owner_username = serializers.CharField(source='owner.username', read_only=True)
+    member_count = serializers.SerializerMethodField()
+    members_detail = WorkspaceMemberSerializer(source='workspace_members', many=True, read_only=True)
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Workspace
+        fields = [
+            'id', 'name', 'slug', 'description',
+            'owner', 'owner_username', 'member_count', 'members_detail',
+            'role', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['slug', 'owner', 'created_at', 'updated_at']
+
+    def get_member_count(self, obj):
+        return obj.workspace_members.count()
+
+    def get_role(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return None
+        member = obj.workspace_members.filter(user=request.user).first()
+        return member.role if member else None
+
+
+class RegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    workspace_name = serializers.CharField(max_length=255)
+    workspace_description = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError('Username sudah digunakan.')
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('Email sudah terdaftar.')
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -130,12 +185,14 @@ class AdminSettingsSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     geodata_count = serializers.IntegerField(read_only=True, default=0)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True, default=None)
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True, default=None)
 
     class Meta:
         model = Project
         fields = [
             'id', 'mobile_id', 'name', 'description', 'geometry_type',
             'form_fields', 'created_by', 'created_by_username', 'collectors',
+            'workspace', 'workspace_name',
             'map_color', 'created_at', 'updated_at', 'synced_at',
             'is_active', 'is_deleted', 'geodata_count',
         ]
@@ -145,12 +202,14 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectGroupSerializer(serializers.ModelSerializer):
     project_count = serializers.SerializerMethodField()
     created_by_username = serializers.CharField(source='created_by.username', read_only=True, default=None)
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True, default=None)
 
     class Meta:
         model = ProjectGroup
         fields = [
             'id', 'name', 'description', 'projects', 'geometry_type',
             'json_template', 'created_by', 'created_by_username',
+            'workspace', 'workspace_name',
             'access_by', 'created_at', 'updated_at',
             'is_active', 'is_deleted', 'project_count',
         ]
@@ -236,11 +295,13 @@ class FCMTokenSerializer(serializers.ModelSerializer):
 
 class TMSLayerSerializer(serializers.ModelSerializer):
     full_url = serializers.SerializerMethodField()
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True, default=None)
 
     class Meta:
         model = TMSLayer
         fields = [
             'id', 'name', 'code', 'description', 'owner',
+            'workspace', 'workspace_name',
             'tms_url', 'base_url', 'min_zoom', 'max_zoom',
             'is_active', 'created_at', 'updated_at', 'full_url',
         ]

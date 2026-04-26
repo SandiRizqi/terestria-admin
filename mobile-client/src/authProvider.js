@@ -109,6 +109,7 @@ const authProvider = {
                 is_superuser: profile.is_superuser,
                 groups: profile.groups || [],
                 permissions: profile.permissions || [],
+                workspaces: profile.workspaces || [],
             }))
             .catch(() => Promise.reject());
     },

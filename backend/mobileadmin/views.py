@@ -10,8 +10,9 @@ from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
 
 from django.contrib.auth.models import User, Group, Permission
 
@@ -19,6 +20,7 @@ from .models import (
     Project, ProjectGroup, GeoData, SyncLog,
     MobileAppVersion, FCMToken, TMSLayer, MobileNotification,
     AdminSettings, AuditLog, GeoDataComment, Task,
+    Workspace, WorkspaceMember,
 )
 from .serializers import (
     ProjectSerializer, ProjectGroupSerializer, GeoDataSerializer,
@@ -27,6 +29,7 @@ from .serializers import (
     UserManagementSerializer, GroupSerializer, PermissionSerializer,
     AdminSettingsSerializer, AuditLogSerializer,
     GeoDataCommentSerializer, TaskSerializer,
+    WorkspaceSerializer, WorkspaceMemberSerializer, RegisterSerializer,
 )
 from .filters import (
     ProjectFilter, ProjectGroupFilter, GeoDataFilter,
@@ -39,6 +42,7 @@ from .permissions import (
     IsStaffOrSuperuser, IsStaffOrReadOnly,
     filter_projects_for_user, filter_project_groups_for_user,
     filter_geodata_for_user, get_accessible_project_mobile_ids,
+    get_workspace_id,
 )
 
 
@@ -56,8 +60,9 @@ class ProjectViewSet(AuditMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Project.objects.annotate(
             geodata_count=Count('geo_data')
-        ).select_related('created_by').all()
-        return filter_projects_for_user(qs, self.request.user)
+        ).select_related('created_by', 'workspace').all()
+        ws_id = get_workspace_id(self.request)
+        return filter_projects_for_user(qs, self.request.user, workspace_id=ws_id)
 
     def get_object(self):
         """Support lookup by both integer PK and mobile_id UUID."""
@@ -102,8 +107,9 @@ class ProjectGroupViewSet(AuditMixin, viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        qs = ProjectGroup.objects.select_related('created_by').all()
-        return filter_project_groups_for_user(qs, self.request.user)
+        qs = ProjectGroup.objects.select_related('created_by', 'workspace').all()
+        ws_id = get_workspace_id(self.request)
+        return filter_project_groups_for_user(qs, self.request.user, workspace_id=ws_id)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -137,7 +143,8 @@ class GeoDataViewSet(AuditMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = GeoData.objects.select_related('project', 'collected_by').all()
-        return filter_geodata_for_user(qs, self.request.user)
+        ws_id = get_workspace_id(self.request)
+        return filter_geodata_for_user(qs, self.request.user, workspace_id=ws_id)
 
     def perform_create(self, serializer):
         serializer.save(collected_by=self.request.user)
@@ -419,7 +426,84 @@ class TMSLayerViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'code', 'created_at']
 
     def get_queryset(self):
-        return TMSLayer.objects.all()
+        qs = TMSLayer.objects.select_related('workspace').all()
+        ws_id = get_workspace_id(self.request)
+        if ws_id:
+            user = self.request.user
+            if user.is_superuser or user.is_staff:
+                return qs.filter(workspace_id=ws_id)
+            if WorkspaceMember.objects.filter(user=user, workspace_id=ws_id).exists():
+                return qs.filter(workspace_id=ws_id)
+        return qs
+
+
+class WorkspaceViewSet(viewsets.ModelViewSet):
+    serializer_class = WorkspaceSerializer
+    permission_classes = [IsAuthenticated]
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return Workspace.objects.prefetch_related('workspace_members__user').all()
+        return Workspace.objects.filter(
+            workspace_members__user=user
+        ).prefetch_related('workspace_members__user').distinct()
+
+    def perform_create(self, serializer):
+        workspace = serializer.save(owner=self.request.user)
+        WorkspaceMember.objects.create(
+            workspace=workspace, user=self.request.user, role='owner'
+        )
+
+    @action(detail=True, methods=['post'])
+    def add_member(self, request, pk=None):
+        workspace = self.get_object()
+        # Only owner or admin can add members
+        requester = WorkspaceMember.objects.filter(
+            workspace=workspace, user=request.user
+        ).first()
+        if not request.user.is_staff and not request.user.is_superuser:
+            if not requester or requester.role not in ('owner', 'admin'):
+                return Response({'detail': 'Hanya owner/admin yang bisa menambah member.'},
+                                status=status.HTTP_403_FORBIDDEN)
+        user_id = request.data.get('user_id')
+        role = request.data.get('role', 'member')
+        if not user_id:
+            return Response({'detail': 'user_id diperlukan.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User tidak ditemukan.'}, status=status.HTTP_404_NOT_FOUND)
+        member, created = WorkspaceMember.objects.get_or_create(
+            workspace=workspace, user=user,
+            defaults={'role': role}
+        )
+        if not created:
+            member.role = role
+            member.save(update_fields=['role'])
+        return Response(WorkspaceMemberSerializer(member).data)
+
+    @action(detail=True, methods=['delete'])
+    def remove_member(self, request, pk=None):
+        workspace = self.get_object()
+        requester = WorkspaceMember.objects.filter(
+            workspace=workspace, user=request.user
+        ).first()
+        if not request.user.is_staff and not request.user.is_superuser:
+            if not requester or requester.role not in ('owner', 'admin'):
+                return Response({'detail': 'Hanya owner/admin yang bisa menghapus member.'},
+                                status=status.HTTP_403_FORBIDDEN)
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'detail': 'user_id diperlukan.'}, status=status.HTTP_400_BAD_REQUEST)
+        deleted, _ = WorkspaceMember.objects.filter(
+            workspace=workspace, user_id=user_id
+        ).delete()
+        if not deleted:
+            return Response({'detail': 'Member tidak ditemukan.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MobileNotificationViewSet(viewsets.ModelViewSet):
@@ -807,11 +891,15 @@ def tile_proxy(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def me(request):
-    """
-    Returns the authenticated user's info and permissions.
-    Used by the frontend to validate the token and get role info.
-    """
     user = request.user
+    workspaces = []
+    for m in WorkspaceMember.objects.filter(user=user).select_related('workspace'):
+        workspaces.append({
+            'id': m.workspace.id,
+            'name': m.workspace.name,
+            'slug': m.workspace.slug,
+            'role': m.role,
+        })
     return Response({
         'id': user.id,
         'username': user.username,
@@ -822,7 +910,45 @@ def me(request):
         'is_superuser': user.is_superuser,
         'groups': list(user.groups.values_list('name', flat=True)),
         'permissions': list(user.get_all_permissions()),
+        'workspaces': workspaces,
     })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    """Public registration: create user + workspace, return auth token."""
+    serializer = RegisterSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    user = User.objects.create_user(
+        username=data['username'],
+        email=data['email'],
+        password=data['password'],
+    )
+    workspace = Workspace.objects.create(
+        name=data['workspace_name'],
+        description=data.get('workspace_description', ''),
+        owner=user,
+    )
+    WorkspaceMember.objects.create(workspace=workspace, user=user, role='owner')
+
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({
+        'token': token.key,
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+        },
+        'workspace': {
+            'id': workspace.id,
+            'name': workspace.name,
+            'slug': workspace.slug,
+        },
+    }, status=status.HTTP_201_CREATED)
 
 
 # ---------------------------------------------------------------------------

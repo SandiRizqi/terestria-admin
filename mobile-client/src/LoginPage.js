@@ -234,6 +234,12 @@ const LoginPage = () => {
                             )}
                         </Button>
                     </form>
+                    <div style={{ marginTop: 20, textAlign: 'center', fontSize: 14, color: '#6b8f6b' }}>
+                        Belum punya akun?{' '}
+                        <a href="/#/register" style={{ color: '#388e3c', fontWeight: 700, textDecoration: 'none' }}>
+                            Daftar di sini
+                        </a>
+                    </div>
                 </div>
             </div>
 

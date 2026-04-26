@@ -7,7 +7,8 @@ from .views import (
     UserManagementViewSet, GroupViewSet, PermissionViewSet,
     AdminSettingsViewSet, AuditLogViewSet,
     GeoDataCommentViewSet, TaskViewSet,
-    vector_tile, tile_proxy, me, dashboard_analytics, spatial_query,
+    WorkspaceViewSet,
+    vector_tile, tile_proxy, me, dashboard_analytics, spatial_query, register,
 )
 
 router = DefaultRouter()
@@ -26,10 +27,12 @@ router.register('admin-settings', AdminSettingsViewSet, basename='admin-settings
 router.register('geodata-comments', GeoDataCommentViewSet, basename='geodata-comment')
 router.register('tasks', TaskViewSet, basename='task')
 router.register('audit-logs', AuditLogViewSet, basename='audit-log')
+router.register('workspaces', WorkspaceViewSet, basename='workspace')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('me/', me, name='me'),
+    path('register/', register, name='register'),
     path('analytics/dashboard/', dashboard_analytics, name='dashboard-analytics'),
     path('spatial-query/', spatial_query, name='spatial-query'),
     path('tiles/<int:z>/<int:x>/<int:y>.pbf', vector_tile, name='vector-tile'),

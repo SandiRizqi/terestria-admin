@@ -1,19 +1,22 @@
 """
 Row-level permissions for Terestria Mobile Admin.
-
-Non-superusers can only see/edit projects they created or are assigned to.
-Superusers and staff have full access.
 """
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from django.db.models import Q
 
 
-class IsProjectMember(BasePermission):
-    """
-    Object-level permission: user must be the creator or a collector of the project.
-    Superusers and staff bypass this check.
-    """
+def get_workspace_id(request):
+    """Read workspace ID from X-Workspace header or ?workspace= query param."""
+    ws = request.META.get('HTTP_X_WORKSPACE') or request.query_params.get('workspace')
+    if ws:
+        try:
+            return int(ws)
+        except (ValueError, TypeError):
+            pass
+    return None
 
+
+class IsProjectMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.is_superuser or user.is_staff:
@@ -22,10 +25,6 @@ class IsProjectMember(BasePermission):
 
 
 class IsProjectGroupMember(BasePermission):
-    """
-    Object-level permission: user must be the creator or in access_by of the group.
-    """
-
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.is_superuser or user.is_staff:
@@ -34,10 +33,6 @@ class IsProjectGroupMember(BasePermission):
 
 
 class IsGeoDataProjectMember(BasePermission):
-    """
-    Object-level permission: user must have access to the geodata's project.
-    """
-
     def has_object_permission(self, request, view, obj):
         user = request.user
         if user.is_superuser or user.is_staff:
@@ -51,58 +46,93 @@ class IsGeoDataProjectMember(BasePermission):
 
 
 # ---------------------------------------------------------------------------
-# Queryset helpers (used in ViewSet.get_queryset)
+# Queryset helpers
 # ---------------------------------------------------------------------------
 
-def filter_projects_for_user(qs, user):
-    """Return only projects the user created or is a collector of."""
+def _workspace_qs(qs, user, workspace_id, workspace_field='workspace_id'):
+    """Apply workspace filter to a queryset."""
+    from .models import WorkspaceMember
     if user.is_superuser or user.is_staff:
+        if workspace_id:
+            return qs.filter(**{workspace_field: workspace_id})
         return qs
-    return qs.filter(
-        Q(created_by=user) | Q(collectors=user)
-    ).distinct()
+    # Non-staff: restrict to workspaces user belongs to
+    member_ws_ids = WorkspaceMember.objects.filter(user=user).values_list('workspace_id', flat=True)
+    if workspace_id and workspace_id in list(member_ws_ids):
+        return qs.filter(**{workspace_field: workspace_id})
+    return qs.filter(**{f"{workspace_field}__in": member_ws_ids})
 
 
-def filter_project_groups_for_user(qs, user):
-    """Return only groups the user created or has access to."""
+def filter_projects_for_user(qs, user, workspace_id=None):
     if user.is_superuser or user.is_staff:
+        if workspace_id:
+            return qs.filter(workspace_id=workspace_id)
         return qs
-    return qs.filter(
-        Q(created_by=user) | Q(access_by=user)
+    from .models import WorkspaceMember
+    member_ws_ids = list(WorkspaceMember.objects.filter(user=user).values_list('workspace_id', flat=True))
+    base = qs.filter(
+        Q(created_by=user) | Q(collectors=user) | Q(workspace_id__in=member_ws_ids)
     ).distinct()
+    if workspace_id and workspace_id in member_ws_ids:
+        return base.filter(workspace_id=workspace_id)
+    return base
 
 
-def get_accessible_project_mobile_ids(user):
-    """Get list of project mobile_ids that the user can access."""
+def filter_project_groups_for_user(qs, user, workspace_id=None):
+    if user.is_superuser or user.is_staff:
+        if workspace_id:
+            return qs.filter(workspace_id=workspace_id)
+        return qs
+    from .models import WorkspaceMember
+    member_ws_ids = list(WorkspaceMember.objects.filter(user=user).values_list('workspace_id', flat=True))
+    base = qs.filter(
+        Q(created_by=user) | Q(access_by=user) | Q(workspace_id__in=member_ws_ids)
+    ).distinct()
+    if workspace_id and workspace_id in member_ws_ids:
+        return base.filter(workspace_id=workspace_id)
+    return base
+
+
+def get_accessible_project_mobile_ids(user, workspace_id=None):
     from .models import Project
     if user.is_superuser or user.is_staff:
-        return None  # None means "all"
-    return list(
-        Project.objects.filter(
-            Q(created_by=user) | Q(collectors=user)
-        ).values_list('mobile_id', flat=True).distinct()
+        if workspace_id:
+            return list(Project.objects.filter(workspace_id=workspace_id).values_list('mobile_id', flat=True))
+        return None
+    from .models import WorkspaceMember
+    member_ws_ids = list(WorkspaceMember.objects.filter(user=user).values_list('workspace_id', flat=True))
+    qs = Project.objects.filter(
+        Q(created_by=user) | Q(collectors=user) | Q(workspace_id__in=member_ws_ids)
     )
+    if workspace_id and workspace_id in member_ws_ids:
+        qs = qs.filter(workspace_id=workspace_id)
+    return list(qs.values_list('mobile_id', flat=True).distinct())
 
 
-def filter_geodata_for_user(qs, user):
-    """Filter geodata to only include those from accessible projects."""
+def filter_geodata_for_user(qs, user, workspace_id=None):
     if user.is_superuser or user.is_staff:
+        if workspace_id:
+            return qs.filter(project__workspace_id=workspace_id)
         return qs
-    return qs.filter(
+    from .models import WorkspaceMember
+    member_ws_ids = list(WorkspaceMember.objects.filter(user=user).values_list('workspace_id', flat=True))
+    base = qs.filter(
         Q(project__created_by=user)
         | Q(project__collectors=user)
         | Q(collected_by=user)
+        | Q(project__workspace_id__in=member_ws_ids)
     ).distinct()
+    if workspace_id and workspace_id in member_ws_ids:
+        return base.filter(project__workspace_id=workspace_id)
+    return base
 
 
 class IsStaffOrSuperuser(BasePermission):
-    """Only staff and superusers can access this resource."""
     def has_permission(self, request, view):
         return bool(request.user and (request.user.is_staff or request.user.is_superuser))
 
 
 class IsStaffOrReadOnly(BasePermission):
-    """Read operations for any authenticated user; write operations require staff."""
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return bool(request.user and request.user.is_authenticated)
