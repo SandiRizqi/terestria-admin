@@ -78,7 +78,9 @@ class ProjectViewSet(AuditMixin, viewsets.ModelViewSet):
         return obj
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        ws_id = get_workspace_id(self.request)
+        workspace = Workspace.objects.filter(id=ws_id).first() if ws_id else None
+        serializer.save(created_by=self.request.user, workspace=workspace)
 
     @action(detail=False, methods=['post'])
     def bulk_delete(self, request):
@@ -113,7 +115,9 @@ class ProjectGroupViewSet(AuditMixin, viewsets.ModelViewSet):
         return filter_project_groups_for_user(qs, self.request.user, workspace_id=ws_id)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        ws_id = get_workspace_id(self.request)
+        workspace = Workspace.objects.filter(id=ws_id).first() if ws_id else None
+        serializer.save(created_by=self.request.user, workspace=workspace)
 
     @action(detail=False, methods=['post'])
     def bulk_delete(self, request):
@@ -436,6 +440,11 @@ class TMSLayerViewSet(viewsets.ModelViewSet):
             if WorkspaceMember.objects.filter(user=user, workspace_id=ws_id).exists():
                 return qs.filter(workspace_id=ws_id)
         return qs
+
+    def perform_create(self, serializer):
+        ws_id = get_workspace_id(self.request)
+        workspace = Workspace.objects.filter(id=ws_id).first() if ws_id else None
+        serializer.save(workspace=workspace)
 
 
 class WorkspaceViewSet(viewsets.ModelViewSet):
