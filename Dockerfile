@@ -11,10 +11,8 @@ RUN npm ci --legacy-peer-deps
 COPY mobile-client/public ./public
 COPY mobile-client/src ./src
 
-# Create a default .env file if it doesn't exist, to prevent COPY errors
-# This ensures that even if .env is missing locally, the build won't crash
-RUN touch mobile-client/.env
-COPY mobile-client/.env* ./.env
+# Copy .env file if it exists (the brackets [v] acts as a wildcard trick so it won't fail if missing)
+COPY mobile-client/.en[v]* ./
 
 ENV NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
 
