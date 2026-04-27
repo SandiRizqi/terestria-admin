@@ -51,8 +51,10 @@ COPY nginx.conf /etc/nginx/sites-available/default
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Collect static files at build time
-RUN python manage.py collectstatic --noinput 2>/dev/null || true
+# Collect Django static files, then merge into nginx html/static so both
+# React chunks and Django admin/drf static live under the same /static/ path
+RUN python manage.py collectstatic --noinput 2>/dev/null || true && \
+    cp -r /app/static/. /usr/share/nginx/html/static/ 2>/dev/null || true
 
 EXPOSE 80
 
