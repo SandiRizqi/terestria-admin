@@ -10,13 +10,20 @@ RUN npm ci --legacy-peer-deps
 
 COPY mobile-client/public ./public
 COPY mobile-client/src ./src
-COPY mobile-client/.env ./.env
+
+# Create a default .env file if it doesn't exist, to prevent COPY errors
+# This ensures that even if .env is missing locally, the build won't crash
+RUN touch mobile-client/.env
+COPY mobile-client/.env* ./.env
 
 ENV NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
+
+# At build time, we inject placeholder or build-time variables if needed,
+# though runtime variables will override these in Cloud Run via entrypoint replacement if configured
 RUN npx react-scripts build
 
 # ============================================================
-# Stage 2: Production — Python + nginx + gunicorn
+# Stage 2: Production - Python + nginx + gunicorn
 # ============================================================
 FROM python:3.11-slim
 
@@ -41,7 +48,7 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Copy Django project
 COPY backend/ .
 
-# Copy React build → nginx html root
+# Copy React build -> nginx html root
 COPY --from=frontend-build /frontend/build /usr/share/nginx/html
 
 # Copy nginx config
@@ -51,11 +58,13 @@ COPY nginx.conf /etc/nginx/sites-available/default
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Collect Django static files, then merge into nginx html/static so both
-# React chunks and Django admin/drf static live under the same /static/ path
-RUN python manage.py collectstatic --noinput 2>/dev/null || true && \
-    cp -r /app/static/. /usr/share/nginx/html/static/ 2>/dev/null || true
+# Collect static files at build time (using dummy DB settings if needed)
+# Because we renamed API static URL to /django-static/ in settings and nginx,
+# they no longer conflict with React's /static/ files
+RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
+# Explicitly expose port (Cloud Run defaults to 8080, but respects EXPOSE / PORT env var)
+ENV PORT=80
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
